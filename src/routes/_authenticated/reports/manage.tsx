@@ -60,12 +60,17 @@ import {
   useAllReports,
   useUpsertReport,
   useDeleteReport,
+  useAgentMonthAttendance,
+  useAgentMonthSales,
+  useAgentSalaryLedger,
   type MonthlyReportWithAgent,
   type ReportInput,
+  type AgentWithRefs,
 } from "@/lib/queries";
 import { formatPKR, formatDate, initials } from "@/lib/billzo";
 import { SecureImage } from "@/components/billzo/SecureImage";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/reports/manage")({
   component: ManageReportsPage,
@@ -334,7 +339,14 @@ function ManageReportsPage() {
           if (!o) setEditing(null);
         }}
         editing={editing}
-        agents={agents.map((a) => ({ id: a.id, full_name: a.full_name, employee_id: a.employee_id, profile_picture_url: a.profile_picture_url }))}
+        agents={agents.map((a) => ({
+          id: a.id,
+          full_name: a.full_name,
+          employee_id: a.employee_id,
+          profile_picture_url: a.profile_picture_url,
+          salary: a.salary,
+          shift_timing: a.shift_timing,
+        }))}
         onSubmit={handleSubmit}
         saving={upsert.isPending}
       />
@@ -482,7 +494,14 @@ function ReportDialog({
   open: boolean;
   onOpenChange: (o: boolean) => void;
   editing: MonthlyReportWithAgent | null;
-  agents: { id: string; full_name: string; employee_id: string; profile_picture_url: string | null }[];
+  agents: {
+    id: string;
+    full_name: string;
+    employee_id: string;
+    profile_picture_url: string | null;
+    salary: number | null;
+    shift_timing: string | null;
+  }[];
   onSubmit: (v: ReportForm) => void | Promise<void>;
   saving: boolean;
 }) {
@@ -514,6 +533,7 @@ function ReportDialog({
     reset,
     setValue,
     watch,
+    getValues,
     formState: { errors },
   } = useForm<ReportForm>({
     resolver: zodResolver(reportSchema),
@@ -527,7 +547,138 @@ function ReportDialog({
 
   const sentiment = watch("sentiment");
   const agentId = watch("agent_id");
+  const monthValue = watch("month");
   const selAgent = agents.find((a) => a.id === agentId);
+
+  // ── AUTO-FILL data sources (only when creating, not editing) ───────────────
+  // We fetch the agent's existing monthly sales + attendance records for the
+  // selected month so the form can pre-fill itself.
+  const isCreating = !editing;
+  const { data: monthAttendance = [], isLoading: attLoading } = useAgentMonthAttendance(
+    isCreating ? agentId : undefined,
+    isCreating ? monthValue : undefined,
+  );
+  const { data: monthSales, isLoading: salesLoading } = useAgentMonthSales(
+    isCreating ? agentId : undefined,
+    isCreating ? monthValue : undefined,
+  );
+  // Salary ledger (bonus + deductions) for the month
+  const { data: ledgerEntries = [], isLoading: ledgerLoading } = useAgentSalaryLedger(
+    isCreating ? agentId : undefined,
+    isCreating && monthValue ? `${monthValue}-01` : undefined,
+  );
+
+  const autoFillLoading = attLoading || salesLoading || ledgerLoading;
+
+  // ── AUTO-FILL effect: when agent + month change (and we're creating), prefill
+  // the salary / sales / attendance / hours fields from existing data.
+  // We only run this once per (agentId, monthValue) combination so the admin's
+  // manual edits aren't overwritten if they tab back to a field.
+  const [autoFilledKey, setAutoFilledKey] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isCreating || !open) return;
+    if (!agentId || !monthValue) return;
+    if (autoFillLoading) return;
+    const key = `${agentId}|${monthValue}`;
+    if (key === autoFilledKey) return; // already filled for this combo
+
+    // Pre-fill base salary from the agent record
+    if (selAgent?.salary != null) {
+      setValue("base_salary", Number(selAgent.salary), { shouldValidate: true });
+    }
+
+    // Pre-fill sales from agent_monthly_sales (if a row exists for this month)
+    if (monthSales) {
+      setValue("total_sales", Number(monthSales.amount), { shouldValidate: true });
+      if (monthSales.notes) {
+        setValue("headline", monthSales.notes.slice(0, 120), { shouldValidate: true });
+      }
+    } else {
+      setValue("total_sales", 0, { shouldValidate: true });
+    }
+
+    // Pre-fill attendance summary from the fetched attendance records
+    const daysPresent = monthAttendance.filter((r) => r.status === "present").length;
+    const daysAbsent = monthAttendance.filter((r) => r.status === "absent").length;
+    const daysLate = monthAttendance.filter((r) => r.status === "late").length;
+    const daysLeave = monthAttendance.filter((r) => r.status === "leave").length;
+    const totalHours = monthAttendance.reduce((s, r) => s + (r.total_hours ?? 0), 0);
+
+    setValue("days_present", daysPresent, { shouldValidate: true });
+    setValue("days_absent", daysAbsent, { shouldValidate: true });
+    setValue("days_late", daysLate, { shouldValidate: true });
+    setValue("days_leave", daysLeave, { shouldValidate: true });
+    setValue("total_hours", Number(totalHours.toFixed(2)), { shouldValidate: true });
+
+    // Pre-fill bonus + deductions from the salary ledger
+    const bonusSum = ledgerEntries
+      .filter((e) => e.entry_type === "bonus")
+      .reduce((s, e) => s + Number(e.amount), 0);
+    const deductionSum = ledgerEntries
+      .filter((e) => e.entry_type === "deduction")
+      .reduce((s, e) => s + Number(e.amount), 0);
+    setValue("bonus", Number(bonusSum.toFixed(2)), { shouldValidate: true });
+    setValue("deduction", Number(deductionSum.toFixed(2)), { shouldValidate: true });
+
+    // Auto-set sentiment based on attendance ratio
+    const totalRecords = monthAttendance.length;
+    const presentRatio = totalRecords ? daysPresent / totalRecords : 0;
+    if (totalRecords > 0) {
+      if (presentRatio >= 0.9) setValue("sentiment", "praise");
+      else if (presentRatio >= 0.7) setValue("sentiment", "neutral");
+      else if (presentRatio >= 0.5) setValue("sentiment", "improvement");
+      else setValue("sentiment", "warning");
+    }
+
+    setAutoFilledKey(key);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agentId, monthValue, isCreating, open, autoFillLoading, monthSales, monthAttendance, ledgerEntries, selAgent]);
+
+  // Reset the "already filled" tracker when the dialog closes
+  useEffect(() => {
+    if (!open) setAutoFilledKey(null);
+  }, [open]);
+
+  // Manual re-fill button
+  function handleManualAutoFill() {
+    if (!selAgent) {
+      toast.error("Select an agent first");
+      return;
+    }
+    if (!monthValue) {
+      toast.error("Select a month first");
+      return;
+    }
+
+    if (selAgent.salary != null) {
+      setValue("base_salary", Number(selAgent.salary), { shouldValidate: true });
+    }
+    if (monthSales) {
+      setValue("total_sales", Number(monthSales.amount), { shouldValidate: true });
+    }
+    const daysPresent = monthAttendance.filter((r) => r.status === "present").length;
+    const daysAbsent = monthAttendance.filter((r) => r.status === "absent").length;
+    const daysLate = monthAttendance.filter((r) => r.status === "late").length;
+    const daysLeave = monthAttendance.filter((r) => r.status === "leave").length;
+    const totalHours = monthAttendance.reduce((s, r) => s + (r.total_hours ?? 0), 0);
+    setValue("days_present", daysPresent, { shouldValidate: true });
+    setValue("days_absent", daysAbsent, { shouldValidate: true });
+    setValue("days_late", daysLate, { shouldValidate: true });
+    setValue("days_leave", daysLeave, { shouldValidate: true });
+    setValue("total_hours", Number(totalHours.toFixed(2)), { shouldValidate: true });
+
+    const bonusSum = ledgerEntries
+      .filter((e) => e.entry_type === "bonus")
+      .reduce((s, e) => s + Number(e.amount), 0);
+    const deductionSum = ledgerEntries
+      .filter((e) => e.entry_type === "deduction")
+      .reduce((s, e) => s + Number(e.amount), 0);
+    setValue("bonus", Number(bonusSum.toFixed(2)), { shouldValidate: true });
+    setValue("deduction", Number(deductionSum.toFixed(2)), { shouldValidate: true });
+
+    toast.success("Auto-filled from existing data");
+    setAutoFilledKey(`${agentId}|${monthValue}`);
+  }
 
   // Live preview of computed fields
   const base = Number(watch("base_salary") ?? 0);
@@ -537,6 +688,14 @@ function ReportDialog({
   const target = Number(watch("sales_target") ?? 0);
   const net = base + bonus - ded;
   const achPct = target ? (sales / target) * 100 : 0;
+
+  // Auto-fill summary stats (what was found)
+  const autoFillStats = isCreating && selAgent && monthValue ? {
+    attendanceRecords: monthAttendance.length,
+    salesRecord: monthSales ? Number(monthSales.amount) : null,
+    ledgerEntries: ledgerEntries.length,
+    baseSalaryFromAgent: selAgent.salary ?? null,
+  } : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -576,6 +735,45 @@ function ReportDialog({
               {errors.month && <p className="text-xs text-destructive">{errors.month.message}</p>}
             </div>
           </div>
+
+          {/* AUTO-FILL banner (only when creating) */}
+          {isCreating && selAgent && monthValue && (
+            <div className="relative overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/8 to-transparent p-4">
+              <div className="absolute -right-6 -top-6 size-24 rounded-full bg-primary/8 blur-2xl" />
+              <div className="relative flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-primary/15 ring-1 ring-primary/25">
+                    {autoFillLoading ? (
+                      <div className="size-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    ) : (
+                      <Sparkles className="size-4 text-primary" />
+                    )}
+                  </span>
+                  <div>
+                    <p className="text-xs font-semibold text-primary">Auto-fill from existing data</p>
+                    <p className="text-[11px] text-muted-foreground/70">
+                      {autoFillLoading
+                        ? "Loading monthly data…"
+                        : autoFillStats
+                          ? `Base salary · ${autoFillStats.attendanceRecords} attendance records · ${autoFillStats.ledgerEntries} ledger entries${autoFillStats.salesRecord != null ? ` · ₨${autoFillStats.salesRecord.toLocaleString()} sales` : ""}`
+                          : "Pick an agent + month to auto-fill"}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={handleManualAutoFill}
+                  disabled={autoFillLoading || !selAgent || !monthValue}
+                  className="border-primary/30 bg-primary/10 text-primary hover:bg-primary/20"
+                >
+                  <Sparkles className="size-3.5" />
+                  {autoFillLoading ? "Loading…" : autoFilledKey === `${agentId}|${monthValue}` ? "Re-fill" : "Auto-fill"}
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* sentiment selector */}
           <div className="space-y-1.5">

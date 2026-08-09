@@ -207,6 +207,57 @@ export function useAgentAttendanceHistory(agentId?: string, limit = 60) {
   });
 }
 
+/**
+ * Fetch attendance records for an agent within a specific month.
+ * `month` is "YYYY-MM" — we expand to the full month range.
+ * Used by the report auto-fill feature.
+ */
+export function useAgentMonthAttendance(agentId?: string, month?: string) {
+  return useQuery({
+    queryKey: ["agent-month-attendance", agentId, month],
+    queryFn: async () => {
+      if (!month) return [];
+      const [y, m] = month.split("-").map(Number);
+      const lastDay = new Date(y!, m!, 0).getDate(); // days in month
+      const from = `${month}-01`;
+      const to = `${month}-${String(lastDay).padStart(2, "0")}`;
+      const { data, error } = await supabase
+        .from("attendance")
+        .select("*")
+        .eq("agent_id", agentId!)
+        .gte("date", from)
+        .lte("date", to)
+        .order("date", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as Attendance[];
+    },
+    enabled: Boolean(agentId && month),
+  });
+}
+
+/**
+ * Fetch the monthly sales record for an agent in a specific month.
+ * Returns the first matching row (or null).
+ */
+export function useAgentMonthSales(agentId?: string, month?: string) {
+  return useQuery({
+    queryKey: ["agent-month-sales", agentId, month],
+    queryFn: async () => {
+      if (!month) return null;
+      const monthDate = `${month}-01`;
+      const { data, error } = await supabase
+        .from("agent_monthly_sales")
+        .select("*")
+        .eq("agent_id", agentId!)
+        .eq("month", monthDate)
+        .maybeSingle();
+      if (error) throw error;
+      return data as MonthlySale | null;
+    },
+    enabled: Boolean(agentId && month),
+  });
+}
+
 export function useStaffProfiles() {
   return useQuery({
     queryKey: ["staff-profiles"],
