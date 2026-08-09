@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   User, Phone, Mail, MapPin, Calendar, Briefcase, GraduationCap,
   Building2, Clock, Banknote, CreditCard, FileText, ShieldCheck,
@@ -7,7 +7,6 @@ import {
   TrendingUp, Lock, BarChart3, Award, Smile, Target, Trophy, ArrowRight,
 } from "lucide-react";
 import { toast } from "sonner";
-import { Link } from "@tanstack/react-router";
 
 import { useAuth } from "@/hooks/useAuth";
 import {

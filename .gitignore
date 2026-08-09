@@ -31,10 +31,13 @@ dist-ssr
 *.sln
 *.sw?
 
-# Local env (keep .env.example for new contributors)
-.env
+# Local env — `.env` IS tracked because it only contains Supabase publishable
+# (anon) keys, which are designed to be public in the browser bundle.
+# Use `.env.local` for any actual secrets you don't want committed.
 .env.local
 .env.*.local
+.env.production
+.env.production.local
 
 # Lock files (keep one — bun.lock)
 # package-lock.json is intentionally kept tracked for npm users

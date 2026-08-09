@@ -130,4 +130,7 @@ export function prettyHM(hm: string): string {
 }
 
 /** All known shift presets, pre-parsed for UI dropdowns. */
-export const PARSED_SHIFTS = SHIFT_TIMINGS.map((s) => ({ raw: s, ...parseShift(s) }));
+export const PARSED_SHIFTS = SHIFT_TIMINGS.map((s) => {
+  const parsed = parseShift(s);
+  return { ...parsed, raw: s };
+});
