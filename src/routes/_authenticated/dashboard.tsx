@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   Users,
@@ -22,6 +22,10 @@ import {
   Moon,
   Coffee,
   Zap,
+  Timer,
+  CalendarClock,
+  ChevronRight,
+  BarChart3,
 } from "lucide-react";
 
 import { StatCard } from "@/components/billzo/StatCard";
@@ -38,6 +42,13 @@ import { SecureImage } from "@/components/billzo/SecureImage";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { getPublicIP } from "@/lib/network";
+import {
+  parseShift,
+  shouldAutoClockOut,
+  expectedClockOut,
+  autoClockOutLabel,
+  prettyHM,
+} from "@/lib/shift";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
@@ -87,6 +98,53 @@ function AgentDashboard() {
 
   // Active (enabled) allowed IPs — if none configured, no restriction
   const enabledNetworks = networkSettings.filter((n) => n.enabled);
+
+  // Today's record for this agent (computed early — auto-clock-out needs it)
+  const todayRecord = useMemo(
+    () =>
+      agent
+        ? ((todayAttendance ?? []).find((r) => r.agent_id === agent.id) ?? null)
+        : null,
+    [agent, todayAttendance],
+  );
+
+  // ── AUTO CLOCK-OUT ───────────────────────────────────────────────────────
+  // If the agent has clocked in but not yet clocked out, and the current time
+  // is past the expected shift end (e.g. night shift 22:00 → 07:00), we
+  // automatically write the clock_out timestamp = expected shift end.
+  useEffect(() => {
+    if (!agent || !todayRecord || todayRecord.clock_out) return;
+    if (!todayRecord.clock_in) return;
+    const expected = shouldAutoClockOut(todayRecord.clock_in, agent.shift_timing);
+    if (!expected) return;
+    // Write the expected shift end as the clock_out time (not "now"), so the
+    // total_hours reflects the full shift.
+    const payload = {
+      id: todayRecord.id,
+      values: { clock_out: expected.toISOString() },
+    };
+    void (async () => {
+      try {
+        await updateAtt.mutateAsync(payload);
+        toast.success(`Auto clock-out at ${formatTime(expected.toISOString())} (end of shift)`, {
+          duration: 6000,
+        });
+        void refetchToday();
+        void qc.invalidateQueries({ queryKey: ["attendance-history"] });
+      } catch (err) {
+        console.warn("auto-clockout failed", err);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agent?.id, agent?.shift_timing, todayRecord?.id, todayRecord?.clock_in, todayRecord?.clock_out]);
+
+  // Live timer — updates every second while the agent is on the clock.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!todayRecord?.clock_in || todayRecord.clock_out) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [todayRecord?.clock_in, todayRecord?.clock_out]);
 
   // Clock-in / Clock-out handlers
   async function handleClockIn() {
@@ -156,11 +214,6 @@ function AgentDashboard() {
 
   const greeting = getGreeting();
   const GreetIcon = greeting.icon;
-
-  // Today's record for this agent
-  const todayRecord = agent
-    ? ((todayAttendance ?? []).find((r) => r.agent_id === agent.id) ?? null)
-    : null;
 
   // Last 30-day stats
   const last30 = history.slice(0, 30);
@@ -276,6 +329,31 @@ function AgentDashboard() {
           <span className="h-px flex-1 bg-primary/10" />
         </h2>
 
+        {/* shift info banner (only if agent has a parseable shift) */}
+        {agent?.shift_timing && (() => {
+          const shift = parseShift(agent.shift_timing);
+          if (shift.flexible || !shift.startHM || !shift.endHM) return null;
+          return (
+            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-info/15 bg-info/5 px-3 py-2 text-xs">
+              <CalendarClock className="size-3.5 text-info" />
+              <span className="text-muted-foreground/80">Shift:</span>
+              <span className="font-medium text-info">{shift.label}</span>
+              <span className="text-muted-foreground/60">·</span>
+              <span className="font-mono font-semibold tabular-nums">
+                {prettyHM(shift.startHM)} → {prettyHM(shift.endHM)}
+              </span>
+              {shift.crossesMidnight && (
+                <span className="rounded-full bg-violet-500/15 px-1.5 py-0.5 text-[10px] font-medium text-violet-400 ring-1 ring-violet-500/30">
+                  crosses midnight
+                </span>
+              )}
+              <span className="ml-auto text-muted-foreground/60">
+                {autoClockOutLabel(agent.shift_timing)}
+              </span>
+            </div>
+          );
+        })()}
+
         {todayRecord ? (
           <div
             className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br p-5 ${STATUS_BG[todayRecord.status] ?? "from-secondary/30 to-secondary/10 border-border/30"}`}
@@ -306,12 +384,12 @@ function AgentDashboard() {
               </div>
 
               <div className="flex flex-col items-end gap-3">
-                <div className="flex gap-6 sm:gap-8">
+                <div className="flex gap-4 sm:gap-6">
                   <div className="text-center">
                     <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60">
                       Clock In
                     </p>
-                    <p className="mt-1 font-mono text-xl font-bold tabular-nums text-foreground/80">
+                    <p className="mt-1 font-mono text-base font-bold tabular-nums text-foreground/80 sm:text-xl">
                       {formatTime(todayRecord.clock_in)}
                     </p>
                   </div>
@@ -319,7 +397,7 @@ function AgentDashboard() {
                     <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60">
                       Clock Out
                     </p>
-                    <p className="mt-1 font-mono text-xl font-bold tabular-nums text-foreground/80">
+                    <p className="mt-1 font-mono text-base font-bold tabular-nums text-foreground/80 sm:text-xl">
                       {todayRecord.clock_out ? formatTime(todayRecord.clock_out) : "—"}
                     </p>
                   </div>
@@ -327,23 +405,49 @@ function AgentDashboard() {
                     <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60">
                       Hours
                     </p>
-                    <p className="mt-1 font-mono text-xl font-bold tabular-nums text-primary">
-                      {hoursLabel(todayRecord.total_hours)}
+                    <p className="mt-1 font-mono text-base font-bold tabular-nums text-primary sm:text-xl">
+                      {todayRecord.clock_in && !todayRecord.clock_out
+                        ? (() => {
+                            const elapsed = (now - new Date(todayRecord.clock_in).getTime()) / 3_600_000;
+                            return `${elapsed.toFixed(2)} h`;
+                          })()
+                        : hoursLabel(todayRecord.total_hours)}
                     </p>
                   </div>
                 </div>
-                {/* Clock out button — only if not yet clocked out */}
+
+                {/* live timer + clock-out button — only if not yet clocked out */}
                 {!todayRecord.clock_out && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20"
-                    disabled={updateAtt.isPending}
-                    onClick={() => handleClockOut(todayRecord.id)}
-                  >
-                    <Moon className="size-3.5" />
-                    {updateAtt.isPending ? "Clocking out…" : "Clock Out"}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    {agent?.shift_timing && (() => {
+                      const exp = expectedClockOut(todayRecord.clock_in!, agent.shift_timing);
+                      if (!exp) return null;
+                      const remainingMs = exp.getTime() - now;
+                      if (remainingMs <= 0) return null;
+                      const h = Math.floor(remainingMs / 3_600_000);
+                      const m = Math.floor((remainingMs % 3_600_000) / 60_000);
+                      const s = Math.floor((remainingMs % 60_000) / 1000);
+                      return (
+                        <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-1 text-[10px] font-medium text-primary ring-1 ring-primary/20">
+                          <Timer className="size-3 animate-pulse" />
+                          <span className="font-mono tabular-nums">
+                            {String(h).padStart(2, "0")}:{String(m).padStart(2, "0")}:{String(s).padStart(2, "0")}
+                          </span>
+                          <span className="text-primary/70">to auto clock-out</span>
+                        </span>
+                      );
+                    })()}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20"
+                      disabled={updateAtt.isPending}
+                      onClick={() => handleClockOut(todayRecord.id)}
+                    >
+                      <Moon className="size-3.5" />
+                      {updateAtt.isPending ? "Clocking out…" : "Clock Out"}
+                    </Button>
+                  </div>
                 )}
               </div>
             </div>
@@ -356,7 +460,9 @@ function AgentDashboard() {
             <div className="flex-1">
               <p className="font-medium text-foreground/70">Not clocked in yet</p>
               <p className="text-sm text-muted-foreground/60">
-                Tap Clock In to start your workday.
+                {agent?.shift_timing
+                  ? `Tap Clock In to start your workday. ${autoClockOutLabel(agent.shift_timing) ?? ""}`
+                  : "Tap Clock In to start your workday."}
               </p>
             </div>
             <Button
@@ -550,6 +656,11 @@ function AgentDashboard() {
           <Button asChild variant="outline" size="sm">
             <Link to="/my-profile">My Documents</Link>
           </Button>
+          <Button asChild size="sm" className="border-primary/30 bg-primary/10 text-primary hover:bg-primary/20">
+            <Link to="/reports">
+              <BarChart3 className="size-3.5" /> My Reports
+            </Link>
+          </Button>
         </div>
       </div>
     </div>
@@ -658,6 +769,11 @@ function StaffDashboard() {
           </Button>
           <Button variant="outline" asChild>
             <Link to="/expenses">Office Expenses</Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link to="/reports/manage">
+              <BarChart3 className="size-4" /> Manage Reports
+            </Link>
           </Button>
         </div>
       </section>

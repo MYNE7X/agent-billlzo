@@ -352,6 +352,60 @@ designations
 
 activity_logs
 
+agent_monthly_sales
+
+agent_salary_ledger
+
+office_expenses
+
+office_network_settings
+
+attendance_violations
+
+agent_monthly_reports  ← NEW (monthly performance reports)
+
+====================================
+
+MONTHLY REPORTS (NEW)
+
+====================================
+
+A new section where admins/super_admins can publish monthly performance
+reports for each agent. Agents see their own reports in a beautiful,
+mobile-first card view.
+
+Routes:
+
+- /reports           — agent view (read-only monthly report cards)
+- /reports/manage    — admin/super_admin CRUD interface
+
+Each report captures:
+
+- Salary breakdown (base + bonus − deduction = net, auto-computed)
+- Sales figures (total + target → achievement %, auto-computed)
+- Performance scores (0-100): performance, behavior, attendance, punctuality
+- Overall score (weighted average, auto-computed)
+- Attendance summary (days present/absent/late/leave + total hours)
+- Headline + free-form notes + sentiment (praise/improvement/warning/neutral)
+
+RLS: agents can read only their own rows; only super_admin / admin can write.
+
+====================================
+
+AUTO CLOCK-OUT AT SHIFT END (NEW)
+
+====================================
+
+When an agent clocks in, the system parses their shift_timing (e.g.
+"Night (22:00 - 07:00)") and computes the expected shift end. If the
+agent is still on the clock past that time, the dashboard automatically
+writes clock_out = expected shift end, so total_hours reflects the full
+shift (not "right now").
+
+- Correctly handles night shifts that cross midnight.
+- Shows a live countdown timer ("HH:MM:SS to auto clock-out").
+- "Flexible" shifts are skipped — no auto-clockout.
+
 ====================================
 
 UI DESIGN

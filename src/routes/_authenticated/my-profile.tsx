@@ -4,14 +4,16 @@ import {
   User, Phone, Mail, MapPin, Calendar, Briefcase, GraduationCap,
   Building2, Clock, Banknote, CreditCard, FileText, ShieldCheck,
   Hash, HeartPulse, Languages, Star, Upload, CheckCircle2,
-  TrendingUp, Lock,
+  TrendingUp, Lock, BarChart3, Award, Smile, Target, Trophy, ArrowRight,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Link } from "@tanstack/react-router";
 
 import { useAuth } from "@/hooks/useAuth";
 import {
   useMyAgent, useAgentAttendanceHistory, useAgentDocuments,
-  useSaveAgent, useAgentMonthlySales, useAgentSalaryLedger, type AgentWithRefs,
+  useSaveAgent, useAgentMonthlySales, useAgentSalaryLedger,
+  useAgentReports, type AgentWithRefs, type MonthlyReportWithAgent,
 } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { uploadAndRegister, uploadAgentFile } from "@/lib/storage";
@@ -22,6 +24,7 @@ import { StatusBadge } from "@/components/billzo/StatusBadge";
 import { SecureImage } from "@/components/billzo/SecureImage";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/my-profile")({
   component: MyProfilePage,
@@ -581,7 +584,7 @@ function MyProfilePage() {
 
       {/* ── TABS ── */}
       <Tabs defaultValue="personal" className="space-y-4">
-        <div className="overflow-x-auto pb-1">
+        <div className="no-scrollbar no-scrollbar-webkit overflow-x-auto pb-1">
           <TabsList className="w-max min-w-full sm:w-auto">
             <TabsTrigger value="personal"><User className="size-3.5" /> Personal</TabsTrigger>
             <TabsTrigger value="employment"><Briefcase className="size-3.5" /> Employment</TabsTrigger>
@@ -589,6 +592,7 @@ function MyProfilePage() {
             <TabsTrigger value="attendance"><Calendar className="size-3.5" /> Attendance</TabsTrigger>
             <TabsTrigger value="sales"><TrendingUp className="size-3.5" /> My Sales</TabsTrigger>
             <TabsTrigger value="salary"><Banknote className="size-3.5" /> Salary</TabsTrigger>
+            <TabsTrigger value="reports"><BarChart3 className="size-3.5" /> Reports</TabsTrigger>
             <TabsTrigger value="documents"><FileText className="size-3.5" /> Documents</TabsTrigger>
           </TabsList>
         </div>
@@ -717,11 +721,160 @@ function MyProfilePage() {
           <SalaryTab agent={agent} />
         </TabsContent>
 
+        {/* REPORTS */}
+        <TabsContent value="reports" className="glass rounded-xl p-5">
+          <ReportsTab agentId={agent.id} />
+        </TabsContent>
+
         {/* DOCUMENTS */}
         <TabsContent value="documents" className="glass rounded-xl p-5">
           <DocumentsTab agentId={agent.id} />
         </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+// ── reports tab ───────────────────────────────────────────────────────────────
+
+function scoreTone(s: number) {
+  if (s >= 85) return "text-emerald-400";
+  if (s >= 70) return "text-blue-400";
+  if (s >= 50) return "text-amber-400";
+  return "text-red-400";
+}
+
+function ReportsTab({ agentId }: { agentId: string }) {
+  const { data: reports = [], isLoading } = useAgentReports(agentId);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-32 items-center justify-center">
+        <div className="size-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
+
+  if (!reports.length) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-10 text-center">
+        <div className="grid size-14 place-items-center rounded-2xl bg-secondary/40 ring-1 ring-border">
+          <BarChart3 className="size-6 text-muted-foreground" />
+        </div>
+        <p className="text-sm font-medium">No reports yet</p>
+        <p className="max-w-xs text-xs text-muted-foreground">
+          Your monthly performance reports will appear here once published by an admin.
+        </p>
+      </div>
+    );
+  }
+
+  const latest = reports[0]!;
+  const avgOverall = reports.reduce((s, r) => s + r.overall_score, 0) / reports.length;
+
+  return (
+    <div className="space-y-5">
+      {/* hero summary */}
+      <div className="relative overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/8 to-transparent p-5">
+        <div className="absolute -right-8 -top-8 size-32 rounded-full bg-primary/8 blur-2xl" />
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-primary/70">
+              <Trophy className="size-3.5" /> Latest Overall Score
+            </p>
+            <p className={cn("mt-1 font-mono text-3xl font-extrabold tabular-nums", scoreTone(latest.overall_score))}>
+              {latest.overall_score.toFixed(0)}
+              <span className="text-base text-muted-foreground/60">/100</span>
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground/70">
+              {new Date(latest.month).toLocaleDateString("en-PK", { year: "numeric", month: "long" })}
+              {latest.headline && ` · "${latest.headline}"`}
+            </p>
+          </div>
+          <div className="flex flex-col items-end gap-2">
+            <div className="rounded-xl border border-white/8 bg-black/20 px-3 py-2 text-right">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60">Avg (all reports)</p>
+              <p className={cn("font-mono text-lg font-bold tabular-nums", scoreTone(avgOverall))}>
+                {avgOverall.toFixed(0)}/100
+              </p>
+            </div>
+            <Button asChild size="sm" variant="outline">
+              <Link to="/reports">
+                View All <ArrowRight className="size-3" />
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* latest scores grid */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {[
+          { label: "Performance", value: latest.performance_score, icon: Award },
+          { label: "Behavior", value: latest.behavior_score, icon: Smile },
+          { label: "Attendance", value: latest.attendance_score, icon: CheckCircle2 },
+          { label: "Punctuality", value: latest.punctuality_score, icon: Clock },
+        ].map((s) => (
+          <div key={s.label} className="rounded-xl border border-white/5 bg-white/3 p-3">
+            <s.icon className={cn("size-4", scoreTone(s.value))} />
+            <p className={cn("mt-1.5 font-mono text-xl font-bold tabular-nums", scoreTone(s.value))}>
+              {s.value.toFixed(0)}
+            </p>
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* salary + sales preview */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl border border-primary/15 bg-primary/5 p-4">
+          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-primary/70">
+            <Banknote className="size-3" /> Net Salary
+          </div>
+          <p className="mt-1.5 font-mono text-2xl font-bold text-primary">{formatPKR(latest.net_salary)}</p>
+          <p className="mt-0.5 text-[10px] text-muted-foreground/60">
+            Base {formatPKR(latest.base_salary)} · +{formatPKR(latest.bonus)} · −{formatPKR(latest.deduction)}
+          </p>
+        </div>
+        <div className="rounded-xl border border-info/15 bg-info/5 p-4">
+          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-info/70">
+            <Target className="size-3" /> Sales Achievement
+          </div>
+          <p className="mt-1.5 font-mono text-2xl font-bold text-info">{latest.achievement_pct.toFixed(1)}%</p>
+          <p className="mt-0.5 text-[10px] text-muted-foreground/60">
+            {formatPKR(latest.total_sales)} of {formatPKR(latest.sales_target)}
+          </p>
+        </div>
+      </div>
+
+      {/* mini history */}
+      <div>
+        <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+          Recent Reports
+        </p>
+        <div className="space-y-1.5">
+          {reports.slice(0, 6).map((r) => (
+            <MiniReportRow key={r.id} report={r} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MiniReportRow({ report }: { report: MonthlyReportWithAgent }) {
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-white/5 bg-white/3 px-3 py-2 transition-colors hover:bg-white/6">
+      <span className={cn("grid size-7 place-items-center rounded-md bg-secondary/60", scoreTone(report.overall_score))}>
+        <BarChart3 className="size-3.5" />
+      </span>
+      <span className="flex-1 truncate text-xs font-medium">
+        {new Date(report.month).toLocaleDateString("en-PK", { year: "numeric", month: "short" })}
+        {report.headline && <span className="text-muted-foreground/60"> · {report.headline}</span>}
+      </span>
+      <span className={cn("font-mono text-sm font-bold tabular-nums", scoreTone(report.overall_score))}>
+        {report.overall_score.toFixed(0)}
+      </span>
     </div>
   );
 }

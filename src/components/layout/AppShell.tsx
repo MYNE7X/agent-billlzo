@@ -14,6 +14,7 @@ import {
   Zap,
   Receipt,
   Wifi,
+  BarChart3,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ const NAV: NavItem[] = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/agents", label: "Agents", icon: Users, staffOnly: true },
   { to: "/attendance", label: "Attendance", icon: CalendarCheck, staffOnly: true },
+  { to: "/reports", label: "Reports", icon: BarChart3 },
   { to: "/expenses", label: "Expenses", icon: Receipt, staffOnly: true },
   { to: "/pending-approvals", label: "Pending", icon: UserCog, staffOnly: true },
   { to: "/network-settings", label: "Network", icon: Wifi, staffOnly: true },
@@ -141,8 +143,15 @@ export function AppShell({ children }: { children: ReactNode }) {
       ? "admin"
       : "agent";
 
-  const bottomItems = items.slice(0, 5);
-  const extraItems = items.slice(5);
+  // Mobile bottom tab bar — always: Dashboard first, Profile last, fill middle with the
+  // next 3 most relevant items for the role. Everything else goes in "More".
+  const profileItem = items.find((i) => i.to === "/my-profile");
+  const dashboardItem = items.find((i) => i.to === "/dashboard");
+  const middleItems = items.filter((i) => i.to !== "/my-profile" && i.to !== "/dashboard");
+  const bottomItems = [dashboardItem, ...middleItems.slice(0, 3), profileItem].filter(
+    (x): x is NavItem => Boolean(x),
+  );
+  const extraItems = middleItems.slice(3);
 
   const sidebar = (
     <div className="flex h-full flex-col gap-4 p-5">

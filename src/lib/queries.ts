@@ -781,3 +781,127 @@ export function useLinkAgent() {
     },
   });
 }
+
+// ── Monthly Reports ───────────────────────────────────────────────────────────
+
+export type MonthlyReport = Database["public"]["Tables"]["agent_monthly_reports"]["Row"];
+
+export type MonthlyReportWithAgent = MonthlyReport & {
+  agents: {
+    id: string;
+    full_name: string;
+    employee_id: string;
+    profile_picture_url: string | null;
+    department_id: string | null;
+    departments: { name: string } | null;
+    designations: { name: string } | null;
+  } | null;
+};
+
+const REPORT_SELECT =
+  "*, agents:agent_id(id, full_name, employee_id, profile_picture_url, department_id, departments:department_id(name), designations:designation_id(name))";
+
+/** All monthly reports for a single agent (used by the agent's own Reports page). */
+export function useAgentReports(agentId?: string) {
+  return useQuery({
+    queryKey: ["agent-reports", agentId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("agent_monthly_reports")
+        .select(REPORT_SELECT)
+        .eq("agent_id", agentId!)
+        .order("month", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as MonthlyReportWithAgent[];
+    },
+    enabled: Boolean(agentId),
+  });
+}
+
+/** Cross-agent view used by admins — filterable by month. */
+export function useAllReports(month?: string) {
+  return useQuery({
+    queryKey: ["all-reports", month ?? "all"],
+    queryFn: async () => {
+      let q = supabase
+        .from("agent_monthly_reports")
+        .select(REPORT_SELECT)
+        .order("overall_score", { ascending: false });
+      if (month) q = q.eq("month", month);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []) as unknown as MonthlyReportWithAgent[];
+    },
+  });
+}
+
+export type ReportInput = {
+  id?: string;
+  agent_id: string;
+  month: string; // "YYYY-MM-01"
+  base_salary?: number;
+  bonus?: number;
+  deduction?: number;
+  total_sales?: number;
+  sales_target?: number;
+  performance_score?: number;
+  behavior_score?: number;
+  attendance_score?: number;
+  punctuality_score?: number;
+  days_present?: number;
+  days_absent?: number;
+  days_late?: number;
+  days_leave?: number;
+  total_hours?: number;
+  headline?: string | null;
+  notes?: string | null;
+  sentiment?: "praise" | "improvement" | "warning" | "neutral";
+  created_by?: string | null;
+};
+
+export function useUpsertReport() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: ReportInput) => {
+      const { id, created_by, ...rest } = input;
+      const payload = {
+        ...rest,
+        ...(created_by != null ? { created_by } : {}),
+        updated_at: new Date().toISOString(),
+      };
+      if (id) {
+        const { error } = await supabase
+          .from("agent_monthly_reports")
+          .update(payload)
+          .eq("id", id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("agent_monthly_reports")
+          .upsert(payload, { onConflict: "agent_id,month" });
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_d, vars) => {
+      void qc.invalidateQueries({ queryKey: ["agent-reports", vars.agent_id] });
+      void qc.invalidateQueries({ queryKey: ["all-reports"] });
+    },
+  });
+}
+
+export function useDeleteReport() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, agentId }: { id: string; agentId: string }) => {
+      const { error } = await supabase
+        .from("agent_monthly_reports")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      void qc.invalidateQueries({ queryKey: ["agent-reports", vars.agentId] });
+      void qc.invalidateQueries({ queryKey: ["all-reports"] });
+    },
+  });
+}

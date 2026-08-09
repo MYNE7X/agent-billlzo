@@ -21,6 +21,8 @@ import { Route as AuthenticatedAgentsIndexRouteImport } from './routes/_authenti
 import { Route as AuthenticatedAgentsAgentIdRouteImport } from './routes/_authenticated/agents/$agentId'
 import { Route as AuthenticatedAgentsNewRouteImport } from './routes/_authenticated/agents/new'
 import { Route as AuthenticatedAttendanceIndexRouteImport } from './routes/_authenticated/attendance/index'
+import { Route as AuthenticatedReportsIndexRouteImport } from './routes/_authenticated/reports/index'
+import { Route as AuthenticatedReportsManageRouteImport } from './routes/_authenticated/reports/manage'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -86,6 +88,18 @@ const AuthenticatedAttendanceIndexRoute =
     path: '/attendance/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedReportsIndexRoute =
+  AuthenticatedReportsIndexRouteImport.update({
+    id: '/reports/',
+    path: '/reports/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedReportsManageRoute =
+  AuthenticatedReportsManageRouteImport.update({
+    id: '/reports/manage',
+    path: '/reports/manage',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -97,8 +111,10 @@ export interface FileRoutesByFullPath {
   '/pending-approvals': typeof AuthenticatedPendingApprovalsRoute
   '/agents/$agentId': typeof AuthenticatedAgentsAgentIdRoute
   '/agents/new': typeof AuthenticatedAgentsNewRoute
+  '/reports/manage': typeof AuthenticatedReportsManageRoute
   '/agents/': typeof AuthenticatedAgentsIndexRoute
   '/attendance/': typeof AuthenticatedAttendanceIndexRoute
+  '/reports/': typeof AuthenticatedReportsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -110,8 +126,10 @@ export interface FileRoutesByTo {
   '/pending-approvals': typeof AuthenticatedPendingApprovalsRoute
   '/agents/$agentId': typeof AuthenticatedAgentsAgentIdRoute
   '/agents/new': typeof AuthenticatedAgentsNewRoute
+  '/reports/manage': typeof AuthenticatedReportsManageRoute
   '/agents': typeof AuthenticatedAgentsIndexRoute
   '/attendance': typeof AuthenticatedAttendanceIndexRoute
+  '/reports': typeof AuthenticatedReportsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -125,8 +143,10 @@ export interface FileRoutesById {
   '/_authenticated/pending-approvals': typeof AuthenticatedPendingApprovalsRoute
   '/_authenticated/agents/$agentId': typeof AuthenticatedAgentsAgentIdRoute
   '/_authenticated/agents/new': typeof AuthenticatedAgentsNewRoute
+  '/_authenticated/reports/manage': typeof AuthenticatedReportsManageRoute
   '/_authenticated/agents/': typeof AuthenticatedAgentsIndexRoute
   '/_authenticated/attendance/': typeof AuthenticatedAttendanceIndexRoute
+  '/_authenticated/reports/': typeof AuthenticatedReportsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -140,8 +160,10 @@ export interface FileRouteTypes {
     | '/pending-approvals'
     | '/agents/$agentId'
     | '/agents/new'
+    | '/reports/manage'
     | '/agents/'
     | '/attendance/'
+    | '/reports/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -153,8 +175,10 @@ export interface FileRouteTypes {
     | '/pending-approvals'
     | '/agents/$agentId'
     | '/agents/new'
+    | '/reports/manage'
     | '/agents'
     | '/attendance'
+    | '/reports'
   id:
     | '__root__'
     | '/'
@@ -167,8 +191,10 @@ export interface FileRouteTypes {
     | '/_authenticated/pending-approvals'
     | '/_authenticated/agents/$agentId'
     | '/_authenticated/agents/new'
+    | '/_authenticated/reports/manage'
     | '/_authenticated/agents/'
     | '/_authenticated/attendance/'
+    | '/_authenticated/reports/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -262,6 +288,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAttendanceIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/reports/': {
+      id: '/_authenticated/reports/'
+      path: '/reports'
+      fullPath: '/reports/'
+      preLoaderRoute: typeof AuthenticatedReportsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/reports/manage': {
+      id: '/_authenticated/reports/manage'
+      path: '/reports/manage'
+      fullPath: '/reports/manage'
+      preLoaderRoute: typeof AuthenticatedReportsManageRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
@@ -274,8 +314,10 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPendingApprovalsRoute: typeof AuthenticatedPendingApprovalsRoute
   AuthenticatedAgentsAgentIdRoute: typeof AuthenticatedAgentsAgentIdRoute
   AuthenticatedAgentsNewRoute: typeof AuthenticatedAgentsNewRoute
+  AuthenticatedReportsManageRoute: typeof AuthenticatedReportsManageRoute
   AuthenticatedAgentsIndexRoute: typeof AuthenticatedAgentsIndexRoute
   AuthenticatedAttendanceIndexRoute: typeof AuthenticatedAttendanceIndexRoute
+  AuthenticatedReportsIndexRoute: typeof AuthenticatedReportsIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -287,8 +329,10 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPendingApprovalsRoute: AuthenticatedPendingApprovalsRoute,
   AuthenticatedAgentsAgentIdRoute: AuthenticatedAgentsAgentIdRoute,
   AuthenticatedAgentsNewRoute: AuthenticatedAgentsNewRoute,
+  AuthenticatedReportsManageRoute: AuthenticatedReportsManageRoute,
   AuthenticatedAgentsIndexRoute: AuthenticatedAgentsIndexRoute,
   AuthenticatedAttendanceIndexRoute: AuthenticatedAttendanceIndexRoute,
+  AuthenticatedReportsIndexRoute: AuthenticatedReportsIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

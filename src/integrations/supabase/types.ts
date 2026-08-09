@@ -186,6 +186,95 @@ export type Database = {
           },
         ]
       }
+      agent_monthly_reports: {
+        Row: {
+          id: string
+          agent_id: string
+          month: string
+          base_salary: number
+          bonus: number
+          deduction: number
+          net_salary: number
+          total_sales: number
+          sales_target: number
+          achievement_pct: number
+          performance_score: number
+          behavior_score: number
+          attendance_score: number
+          punctuality_score: number
+          overall_score: number
+          days_present: number
+          days_absent: number
+          days_late: number
+          days_leave: number
+          total_hours: number
+          headline: string | null
+          notes: string | null
+          sentiment: "praise" | "improvement" | "warning" | "neutral"
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          agent_id: string
+          month: string
+          base_salary?: number
+          bonus?: number
+          deduction?: number
+          total_sales?: number
+          sales_target?: number
+          performance_score?: number
+          behavior_score?: number
+          attendance_score?: number
+          punctuality_score?: number
+          days_present?: number
+          days_absent?: number
+          days_late?: number
+          days_leave?: number
+          total_hours?: number
+          headline?: string | null
+          notes?: string | null
+          sentiment?: "praise" | "improvement" | "warning" | "neutral"
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          agent_id?: string
+          month?: string
+          base_salary?: number
+          bonus?: number
+          deduction?: number
+          total_sales?: number
+          sales_target?: number
+          performance_score?: number
+          behavior_score?: number
+          attendance_score?: number
+          punctuality_score?: number
+          days_present?: number
+          days_absent?: number
+          days_late?: number
+          days_leave?: number
+          total_hours?: number
+          headline?: string | null
+          notes?: string | null
+          sentiment?: "praise" | "improvement" | "warning" | "neutral"
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_monthly_reports_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agents: {
         Row: {
           account_number: string | null
