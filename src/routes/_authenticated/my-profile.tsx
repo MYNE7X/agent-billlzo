@@ -5,6 +5,7 @@ import {
   Building2, Clock, Banknote, CreditCard, FileText, ShieldCheck,
   Hash, HeartPulse, Languages, Star, Upload, CheckCircle2,
   TrendingUp, Lock, BarChart3, Award, Smile, Target, Trophy, ArrowRight,
+  Sparkles, Verified, Settings, Share2, ChevronRight, Activity,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -36,25 +37,31 @@ function InfoRow({ icon: Icon, label, value }: {
 }) {
   if (!value) return null;
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-white/5 bg-white/3 px-4 py-3 transition-colors hover:bg-white/6">
-      <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/15">
-        <Icon className="size-3.5 text-primary" />
+    <div className="group relative flex items-start gap-3 overflow-hidden rounded-2xl border border-white/5 bg-white/[0.03] px-4 py-3 transition-all duration-200 hover:border-primary/20 hover:bg-white/[0.06]">
+      <span className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 ring-1 ring-primary/15 transition-transform duration-200 group-hover:scale-110">
+        <Icon className="size-4 text-primary" />
       </span>
-      <div className="min-w-0">
-        <p className="text-[10px] uppercase tracking-widest text-muted-foreground">{label}</p>
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] uppercase tracking-widest text-muted-foreground/70">{label}</p>
         <p className="mt-0.5 break-words text-sm font-medium leading-snug">{value}</p>
       </div>
     </div>
   );
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
+function SectionTitle({ children, icon: Icon }: { children: React.ReactNode; icon?: React.ElementType }) {
   return (
-    <h3 className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-primary/80">
-      <span className="h-px flex-1 bg-primary/15" />
-      {children}
-      <span className="h-px flex-1 bg-primary/15" />
-    </h3>
+    <div className="mb-3 flex items-center gap-2">
+      {Icon && (
+        <span className="grid size-6 place-items-center rounded-lg bg-primary/15 ring-1 ring-primary/20">
+          <Icon className="size-3.5 text-primary" />
+        </span>
+      )}
+      <h3 className="flex-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground/80">
+        {children}
+      </h3>
+      <span className="h-px w-12 bg-gradient-to-r from-primary/30 to-transparent" />
+    </div>
   );
 }
 
@@ -127,21 +134,21 @@ function AttendanceTab({ agentId }: { agentId: string }) {
   const totalHours = history.reduce((s, r) => s + (r.total_hours ?? 0), 0);
 
   const summaryItems = [
-    { label: "Days Worked", value: counts["present"] ?? 0, color: "text-emerald-400", bg: "bg-emerald-500/10" },
-    { label: "Absent", value: counts["absent"] ?? 0, color: "text-red-400", bg: "bg-red-500/10" },
-    { label: "Late", value: counts["late"] ?? 0, color: "text-amber-400", bg: "bg-amber-500/10" },
-    { label: "Leave", value: counts["leave"] ?? 0, color: "text-violet-400", bg: "bg-violet-500/10" },
-    { label: "Half Day", value: counts["half_day"] ?? 0, color: "text-blue-400", bg: "bg-blue-500/10" },
-    { label: "Total Hours", value: totalHours.toFixed(1) + "h", color: "text-primary", bg: "bg-primary/10" },
+    { label: "Present", value: counts["present"] ?? 0, color: "text-emerald-400", bg: "from-emerald-500/15 to-emerald-500/5", ring: "ring-emerald-500/20" },
+    { label: "Absent", value: counts["absent"] ?? 0, color: "text-red-400", bg: "from-red-500/15 to-red-500/5", ring: "ring-red-500/20" },
+    { label: "Late", value: counts["late"] ?? 0, color: "text-amber-400", bg: "from-amber-500/15 to-amber-500/5", ring: "ring-amber-500/20" },
+    { label: "Leave", value: counts["leave"] ?? 0, color: "text-violet-400", bg: "from-violet-500/15 to-violet-500/5", ring: "ring-violet-500/20" },
+    { label: "Half Day", value: counts["half_day"] ?? 0, color: "text-blue-400", bg: "from-blue-500/15 to-blue-500/5", ring: "ring-blue-500/20" },
+    { label: "Hours", value: totalHours.toFixed(0) + "h", color: "text-primary", bg: "from-primary/15 to-primary/5", ring: "ring-primary/20" },
   ];
 
   return (
-    <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <div className="space-y-4">
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
         {summaryItems.map((s) => (
-          <div key={s.label} className={`rounded-xl ${s.bg} p-3 text-center ring-1 ring-border/30`}>
-            <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
-            <p className="mt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">{s.label}</p>
+          <div key={s.label} className={cn("relative overflow-hidden rounded-2xl bg-gradient-to-br p-3 text-center ring-1", s.bg, s.ring)}>
+            <p className={cn("font-mono text-lg font-bold tabular-nums sm:text-xl", s.color)}>{s.value}</p>
+            <p className="mt-0.5 text-[9px] uppercase tracking-wide text-muted-foreground/70">{s.label}</p>
           </div>
         ))}
       </div>
@@ -150,17 +157,17 @@ function AttendanceTab({ agentId }: { agentId: string }) {
       ) : history.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">No attendance records yet.</p>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border/50">
+        <div className="overflow-hidden rounded-2xl border border-border/40">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border/50 bg-secondary/30">
-                  {["Date", "Clock In", "Clock Out", "Hours", "Status"].map((h) => (
+                <tr className="border-b border-border/40 bg-secondary/30">
+                  {["Date", "In", "Out", "Hours", "Status"].map((h) => (
                     <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/30">
+              <tbody className="divide-y divide-border/20">
                 {history.map((row) => (
                   <tr key={row.id} className="transition-colors hover:bg-secondary/20">
                     <td className="px-4 py-2.5 font-mono text-xs">{formatDate(row.date)}</td>
@@ -168,7 +175,7 @@ function AttendanceTab({ agentId }: { agentId: string }) {
                     <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{formatTime(row.clock_out)}</td>
                     <td className="px-4 py-2.5 font-mono text-xs">{hoursLabel(row.total_hours)}</td>
                     <td className="px-4 py-2.5">
-                      <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_COLOR[row.status] ?? ""}`}>
+                      <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold", STATUS_COLOR[row.status] ?? "")}>
                         {labelize(row.status)}
                       </span>
                     </td>
@@ -202,9 +209,9 @@ function DocumentsTab({ agentId }: { agentId: string }) {
         <button
           key={doc.id}
           onClick={() => doc.file_path && openDoc(doc.file_path)}
-          className="group flex items-start gap-3 rounded-xl border border-border/40 bg-secondary/20 p-4 text-left transition-all hover:border-primary/40 hover:bg-secondary/40"
+          className="group flex items-start gap-3 rounded-2xl border border-border/40 bg-secondary/20 p-4 text-left transition-all hover:border-primary/40 hover:bg-secondary/40 hover:shadow-lg hover:shadow-primary/5"
         >
-          <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 ring-1 ring-primary/20 transition-colors group-hover:bg-primary/20">
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/15 to-primary/5 ring-1 ring-primary/20 transition-all group-hover:from-primary/25 group-hover:to-primary/10">
             <FileText className="size-4 text-primary" />
           </span>
           <div className="min-w-0 flex-1">
@@ -239,32 +246,36 @@ function SalaryTab({ agent }: { agent: AgentWithRefs }) {
 
   return (
     <div className="space-y-5">
-      <SectionTitle>Salary</SectionTitle>
-
       {/* month picker */}
-      <div className="flex items-center gap-3">
-        <label className="text-[10px] uppercase tracking-widest text-muted-foreground shrink-0">Month</label>
-        <input
-          type="month"
-          value={selectedMonth}
-          onChange={(e) => setSelectedMonth(e.target.value)}
-          className="rounded-lg border border-border/50 bg-secondary/30 px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
-        />
+      <div className="flex items-center justify-between gap-3">
+        <SectionTitle icon={Banknote}>Salary Breakdown</SectionTitle>
+        <div className="flex items-center gap-2">
+          <label className="text-[10px] uppercase tracking-widest text-muted-foreground shrink-0">Month</label>
+          <input
+            type="month"
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="rounded-lg border border-border/50 bg-secondary/30 px-3 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
+          />
+        </div>
       </div>
 
       {/* pay summary cards */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 to-primary/5 p-5 text-center">
+        <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/12 to-primary/4 p-5">
+          <div className="absolute -right-6 -top-6 size-24 rounded-full bg-primary/10 blur-2xl" />
           <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Base Salary</p>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-primary">{formatPKR(base)}</p>
+          <p className="mt-2 font-mono text-2xl font-bold tracking-tight text-primary sm:text-3xl">{formatPKR(base)}</p>
         </div>
-        <div className="rounded-2xl border border-red-500/20 bg-gradient-to-br from-red-500/10 to-red-500/5 p-5 text-center">
+        <div className="relative overflow-hidden rounded-2xl border border-red-500/20 bg-gradient-to-br from-red-500/12 to-red-500/4 p-5">
+          <div className="absolute -right-6 -top-6 size-24 rounded-full bg-red-500/10 blur-2xl" />
           <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Deductions</p>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-red-400">− {formatPKR(deductions)}</p>
+          <p className="mt-2 font-mono text-2xl font-bold tracking-tight text-red-400 sm:text-3xl">− {formatPKR(deductions)}</p>
         </div>
-        <div className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 p-5 text-center">
+        <div className="relative overflow-hidden rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/12 to-emerald-500/4 p-5">
+          <div className="absolute -right-6 -top-6 size-24 rounded-full bg-emerald-500/10 blur-2xl" />
           <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Net Pay</p>
-          <p className="mt-2 text-3xl font-bold tracking-tight text-emerald-400">{formatPKR(netPay)}</p>
+          <p className="mt-2 font-mono text-2xl font-bold tracking-tight text-emerald-400 sm:text-3xl">{formatPKR(netPay)}</p>
           {bonuses > 0 && (
             <p className="mt-1 text-[10px] text-emerald-400/60">incl. {formatPKR(bonuses)} bonus</p>
           )}
@@ -279,11 +290,11 @@ function SalaryTab({ agent }: { agent: AgentWithRefs }) {
           No deductions or bonuses recorded for this month.
         </p>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border/50">
+        <div className="overflow-hidden rounded-2xl border border-border/40">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border/50 bg-secondary/30">
+                <tr className="border-b border-border/40 bg-secondary/30">
                   {["Type", "Amount", "Remarks"].map((h) => (
                     <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
                       {h}
@@ -291,31 +302,37 @@ function SalaryTab({ agent }: { agent: AgentWithRefs }) {
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/30">
+              <tbody className="divide-y divide-border/20">
                 {entries.map((row) => (
                   <tr key={row.id} className="transition-colors hover:bg-secondary/20">
                     <td className="px-4 py-3">
                       <span
-                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${
+                        className={cn(
+                          "inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-semibold",
                           row.entry_type === "deduction"
                             ? "bg-red-500/10 text-red-400"
                             : row.entry_type === "bonus"
-                            ? "bg-emerald-500/10 text-emerald-400"
-                            : "bg-primary/10 text-primary"
-                        }`}
+                              ? "bg-emerald-500/10 text-emerald-400"
+                              : "bg-primary/10 text-primary",
+                        )}
                       >
                         {row.entry_type === "deduction" ? "− " : row.entry_type === "bonus" ? "+ " : ""}
                         {row.entry_type === "base_salary"
                           ? "Base Salary"
                           : row.entry_type === "deduction"
-                          ? "Deduction"
-                          : "Bonus"}
+                            ? "Deduction"
+                            : "Bonus"}
                       </span>
                     </td>
                     <td
-                      className={`px-4 py-3 font-semibold tabular-nums ${
-                        row.entry_type === "deduction" ? "text-red-400" : row.entry_type === "bonus" ? "text-emerald-400" : "text-primary"
-                      }`}
+                      className={cn(
+                        "px-4 py-3 font-mono font-semibold tabular-nums",
+                        row.entry_type === "deduction"
+                          ? "text-red-400"
+                          : row.entry_type === "bonus"
+                            ? "text-emerald-400"
+                            : "text-primary",
+                      )}
                     >
                       {row.entry_type === "deduction" ? "−" : "+"} {formatPKR(Number(row.amount))}
                     </td>
@@ -328,7 +345,7 @@ function SalaryTab({ agent }: { agent: AgentWithRefs }) {
         </div>
       )}
 
-      <SectionTitle>Bank Details</SectionTitle>
+      <SectionTitle icon={CreditCard}>Bank Details</SectionTitle>
       <div className="grid gap-2.5 sm:grid-cols-2">
         <InfoRow icon={Banknote} label="Bank Name" value={agent.bank_name} />
         <InfoRow icon={User} label="Account Title" value={agent.account_title} />
@@ -360,17 +377,19 @@ function MySalesTab({ agentId }: { agentId: string }) {
 
   return (
     <div className="space-y-5">
+      <SectionTitle icon={TrendingUp}>Sales Performance</SectionTitle>
       {/* summary cards */}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         {[
-          { label: "Total Sales", value: formatPKR(total), color: "text-emerald-400", bg: "from-emerald-500/10 to-emerald-500/5" },
-          { label: "Best Month", value: formatPKR(best), color: "text-primary", bg: "from-primary/10 to-primary/5" },
-          { label: "Monthly Average", value: formatPKR(avg), color: "text-amber-400", bg: "from-amber-500/10 to-amber-500/5" },
+          { label: "Total Sales", value: formatPKR(total), color: "text-emerald-400", bg: "from-emerald-500/12 to-emerald-500/4", ring: "ring-emerald-500/20" },
+          { label: "Best Month", value: formatPKR(best), color: "text-primary", bg: "from-primary/12 to-primary/4", ring: "ring-primary/20" },
+          { label: "Monthly Average", value: formatPKR(avg), color: "text-amber-400", bg: "from-amber-500/12 to-amber-500/4", ring: "ring-amber-500/20" },
         ].map((s) => (
-          <div key={s.label} className={`rounded-2xl border border-border/30 bg-gradient-to-br ${s.bg} p-5 text-center ring-1 ring-border/20`}>
-            <TrendingUp className={`mx-auto mb-2 size-5 ${s.color} opacity-70`} />
-            <p className={`text-2xl font-bold ${s.color}`}>{s.value}</p>
-            <p className="mt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">{s.label}</p>
+          <div key={s.label} className={cn("relative overflow-hidden rounded-2xl border border-border/30 bg-gradient-to-br p-5 ring-1", s.bg, s.ring)}>
+            <div className="absolute -right-6 -top-6 size-24 rounded-full bg-current/10 blur-2xl" />
+            <TrendingUp className={cn("mb-2 size-5 opacity-70", s.color)} />
+            <p className={cn("font-mono text-xl font-bold tabular-nums sm:text-2xl", s.color)}>{s.value}</p>
+            <p className="mt-0.5 text-[10px] uppercase tracking-wide text-muted-foreground/70">{s.label}</p>
           </div>
         ))}
       </div>
@@ -378,23 +397,23 @@ function MySalesTab({ agentId }: { agentId: string }) {
       {sales.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">No sales data yet. Ask your admin to add your monthly records.</p>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border/50">
+        <div className="overflow-hidden rounded-2xl border border-border/40">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border/50 bg-secondary/30">
+                <tr className="border-b border-border/40 bg-secondary/30">
                   {["Month", "Sales Amount", "Notes"].map((h) => (
                     <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border/30">
+              <tbody className="divide-y divide-border/20">
                 {sales.map((row) => (
                   <tr key={row.id} className="transition-colors hover:bg-secondary/20">
                     <td className="px-4 py-2.5 font-mono text-xs">
                       {new Date(row.month).toLocaleDateString("en-PK", { month: "long", year: "numeric" })}
                     </td>
-                    <td className="px-4 py-2.5 font-semibold text-emerald-400">{formatPKR(Number(row.amount))}</td>
+                    <td className="px-4 py-2.5 font-mono font-semibold text-emerald-400">{formatPKR(Number(row.amount))}</td>
                     <td className="px-4 py-2.5 text-xs text-muted-foreground">{row.notes ?? "—"}</td>
                   </tr>
                 ))}
@@ -414,7 +433,7 @@ function NotLinked({ name }: { name?: string | null }) {
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
       <div className="relative">
         <div className="absolute -inset-4 rounded-full bg-primary/5 blur-xl" />
-        <div className="relative flex size-20 items-center justify-center rounded-2xl border border-primary/20 bg-primary/10">
+        <div className="relative flex size-20 items-center justify-center rounded-3xl border border-primary/20 bg-primary/10">
           <User className="size-9 text-primary/60" />
         </div>
       </div>
@@ -428,12 +447,25 @@ function NotLinked({ name }: { name?: string | null }) {
   );
 }
 
+// ── TikTok-style stats pill (followers/following/likes → Joined/Hours/Status) ─
+
+function StatPill({ value, label }: { value: React.ReactNode; label: string }) {
+  return (
+    <div className="flex flex-col items-center">
+      <span className="font-mono text-base font-bold tabular-nums sm:text-lg">{value}</span>
+      <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">{label}</span>
+    </div>
+  );
+}
+
 // ── main page ─────────────────────────────────────────────────────────────────
 
 function MyProfilePage() {
   const { user, profile } = useAuth();
   const { data: agent, isLoading, refetch } = useMyAgent(user?.id);
   const save = useSaveAgent();
+  const { data: history = [] } = useAgentAttendanceHistory(agent?.id, 90);
+  const { data: reports = [] } = useAgentReports(agent?.id);
 
   const [uploadingDp, setUploadingDp] = useState(false);
   const [uploadingCnicFront, setUploadingCnicFront] = useState(false);
@@ -451,6 +483,9 @@ function MyProfilePage() {
 
   const dept = agent.departments?.name;
   const desig = agent.designations?.name;
+  const totalHours = history.reduce((s, r) => s + (r.total_hours ?? 0), 0);
+  const daysPresent = history.filter((r) => r.status === "present").length;
+  const lastReport = reports[0];
 
   // ── upload handlers (one-time: field must be empty) ───────────────────────
   async function handleDpUpload(file: File) {
@@ -499,106 +534,198 @@ function MyProfilePage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl space-y-5 animate-rise">
+    <div className="mx-auto max-w-3xl animate-rise">
 
-      {/* ── HERO CARD ── */}
-      <div className="relative overflow-hidden rounded-3xl border border-white/8 bg-gradient-to-br from-[#0f1623] via-[#111827] to-[#0a0f1a] p-0 shadow-2xl shadow-black/40">
-        {/* background decorations */}
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -right-20 -top-20 size-64 rounded-full bg-primary/6 blur-3xl" />
-          <div className="absolute -bottom-16 left-1/4 size-56 rounded-full bg-indigo-500/5 blur-3xl" />
-          <div className="absolute bottom-0 right-0 size-40 rounded-full bg-violet-500/4 blur-2xl" />
+      {/* ── TIKTOK-STYLE PROFILE FRAME ────────────────────────────────────────
+       * Cover image / gradient → overlapping story-ring avatar →
+       * name + verified tick → stats strip → action buttons
+       */}
+      <div className="relative overflow-hidden rounded-3xl border border-white/8 bg-card shadow-2xl shadow-black/40">
+        {/* cover: animated gradient w/ mesh blobs */}
+        <div className="relative h-36 w-full overflow-hidden sm:h-44">
+          {/* gradient base */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background:
+                "linear-gradient(120deg, oklch(0.30 0.10 250) 0%, oklch(0.36 0.12 280) 35%, oklch(0.40 0.13 200) 65%, oklch(0.42 0.14 160) 100%)",
+            }}
+          />
+          {/* mesh blobs */}
+          <div className="pointer-events-none absolute inset-0">
+            <div className="absolute -left-10 -top-10 size-40 rounded-full bg-primary/30 blur-3xl" />
+            <div className="absolute -right-8 top-4 size-36 rounded-full bg-fuchsia-500/20 blur-3xl" />
+            <div className="absolute bottom-0 left-1/3 size-32 rounded-full bg-cyan-400/15 blur-2xl" />
+          </div>
+          {/* noise / grain */}
+          <div
+            className="pointer-events-none absolute inset-0 opacity-30 mix-blend-overlay"
+            style={{
+              backgroundImage:
+                "radial-gradient(circle at 20% 30%, oklch(1 0 0 / 0.4) 0, transparent 1px), radial-gradient(circle at 70% 70%, oklch(1 0 0 / 0.3) 0, transparent 1px), radial-gradient(circle at 40% 80%, oklch(1 0 0 / 0.25) 0, transparent 1px)",
+              backgroundSize: "12px 12px, 18px 18px, 24px 24px",
+            }}
+          />
+          {/* top-right action chips */}
+          <div className="absolute right-3 top-3 flex gap-2">
+            <button
+              onClick={() => void refetch()}
+              className="grid size-8 place-items-center rounded-full bg-black/30 text-white/80 backdrop-blur-md transition-colors hover:bg-black/50"
+              aria-label="Refresh"
+            >
+              <Settings className="size-3.5" />
+            </button>
+            <button
+              onClick={() => toast.info("Share profile coming soon")}
+              className="grid size-8 place-items-center rounded-full bg-black/30 text-white/80 backdrop-blur-md transition-colors hover:bg-black/50"
+              aria-label="Share"
+            >
+              <Share2 className="size-3.5" />
+            </button>
+          </div>
         </div>
 
-        {/* top accent bar */}
-        <div className="relative h-1.5 w-full bg-gradient-to-r from-primary via-indigo-400 to-violet-500" />
-
-        <div className="relative p-6 sm:p-8">
-          <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
-
-            {/* avatar */}
-            <div className="relative shrink-0 self-start">
-              <div className="size-24 overflow-hidden rounded-2xl ring-2 ring-primary/40 ring-offset-2 ring-offset-[#0f1623] shadow-xl sm:size-28">
-                {agent.profile_picture_url ? (
-                  <SecureImage path={agent.profile_picture_url} alt={agent.full_name} className="size-full object-cover" />
-                ) : (
-                  <div className="flex size-full items-center justify-center bg-gradient-to-br from-primary/25 to-indigo-500/20">
-                    <span className="text-3xl font-bold text-primary/90">{initials(agent.full_name)}</span>
+        {/* avatar (story-ring) + identity */}
+        <div className="relative px-5 pb-5">
+          {/* avatar overlapping cover */}
+          <div className="-mt-14 flex items-end justify-between sm:-mt-16">
+            <div className="relative">
+              {/* story ring */}
+              <div
+                className="rounded-full p-[3px]"
+                style={{
+                  background:
+                    "conic-gradient(from 0deg, oklch(0.76 0.15 178), oklch(0.70 0.20 280), oklch(0.72 0.20 200), oklch(0.76 0.15 178))",
+                }}
+              >
+                <div className="rounded-full bg-background p-[3px]">
+                  <div className="size-20 overflow-hidden rounded-full ring-1 ring-border/40 sm:size-24">
+                    {agent.profile_picture_url ? (
+                      <SecureImage path={agent.profile_picture_url} alt={agent.full_name} className="size-full object-cover" />
+                    ) : (
+                      <div className="flex size-full items-center justify-center bg-gradient-to-br from-primary/30 to-indigo-500/20">
+                        <span className="text-2xl font-bold text-primary/90">{initials(agent.full_name)}</span>
+                      </div>
+                    )}
                   </div>
-                )}
+                </div>
               </div>
               {/* online dot */}
-              <span className="absolute -bottom-1 -right-1 flex size-5 items-center justify-center rounded-full border-2 border-[#0f1623] bg-emerald-500 shadow-md">
-                <span className="size-2 animate-pulse rounded-full bg-white/80" />
+              <span className="absolute bottom-1 right-1 flex size-4 items-center justify-center rounded-full border-2 border-background bg-emerald-500 shadow-md">
+                <span className="size-1.5 animate-pulse rounded-full bg-white/80" />
               </span>
             </div>
 
-            {/* identity */}
-            <div className="flex-1 space-y-4">
-              <div>
-                <h1 className="bg-gradient-to-r from-white via-white/90 to-white/70 bg-clip-text text-2xl font-extrabold leading-tight tracking-tight text-transparent sm:text-3xl">
-                  {agent.full_name}
-                </h1>
-                {(desig || dept) && (
-                  <p className="mt-1 text-sm text-white/50">
-                    {desig ?? "—"}{dept ? ` · ${dept}` : ""}
-                  </p>
-                )}
-              </div>
-
-              {/* ID badges */}
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 font-mono text-[11px] text-white/50">
-                  <Hash className="size-3 text-primary/60" />{agent.employee_id}
-                </span>
-                <span className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 font-mono text-[11px] text-white/50">
-                  <Hash className="size-3 text-primary/60" />{agent.reference_id}
-                </span>
-                <StatusBadge value={agent.status} />
-              </div>
-
-              {/* quick stats */}
-              <div className="flex flex-wrap gap-2">
-                {([
-                  [Calendar, agent.joining_date ? "Joined " + formatDate(agent.joining_date) : null],
-                  [Clock, agent.shift_timing],
-                  [Briefcase, agent.employee_type ? labelize(agent.employee_type) : null],
-                  [MapPin, [agent.city, agent.country].filter(Boolean).join(", ") || null],
-                ] as [React.ElementType, string | null][]).filter(([, v]) => v).map(([Icon, label], i) => (
-                  <span key={i} className="flex items-center gap-1.5 rounded-full border border-white/8 bg-white/5 px-3 py-1.5 text-xs text-white/50">
-                    <Icon className="size-3 text-primary/70" />{label}
-                  </span>
-                ))}
-              </div>
+            {/* right-side action buttons (TikTok style) */}
+            <div className="mb-1 flex items-center gap-2">
+              <Button asChild size="sm" variant="outline" className="rounded-full border-primary/30 bg-primary/10 text-primary hover:bg-primary/20">
+                <Link to="/reports">
+                  <BarChart3 className="size-3.5" /> View Reports
+                </Link>
+              </Button>
             </div>
           </div>
 
+          {/* name + verified tick */}
+          <div className="mt-3 flex items-center gap-1.5">
+            <h1 className="bg-gradient-to-r from-foreground via-foreground/90 to-foreground/60 bg-clip-text text-xl font-extrabold tracking-tight text-transparent sm:text-2xl">
+              {agent.full_name}
+            </h1>
+            <span className="grid size-5 place-items-center rounded-full bg-gradient-to-br from-sky-400 to-blue-500 shadow-sm">
+              <Verified className="size-3.5 text-white fill-white" />
+            </span>
+          </div>
+
+          {/* subtitle */}
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+            {desig && <span className="font-medium text-foreground/80">{desig}</span>}
+            {dept && (
+              <>
+                <span className="text-muted-foreground/40">·</span>
+                <span>{dept}</span>
+              </>
+            )}
+          </p>
+
+          {/* ID chips */}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 font-mono text-[11px] text-muted-foreground">
+              <Hash className="size-3 text-primary/70" />{agent.employee_id}
+            </span>
+            <span className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 font-mono text-[11px] text-muted-foreground">
+              <Hash className="size-3 text-primary/70" />{agent.reference_id}
+            </span>
+            <StatusBadge value={agent.status} />
+          </div>
+
+          {/* stats strip — TikTok followers/following/likes */}
+          <div className="mt-4 flex items-center justify-around rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-3">
+            <StatPill value={agent.joining_date ? new Date(agent.joining_date).getFullYear() : "—"} label="Joined" />
+            <span className="h-8 w-px bg-border/30" />
+            <StatPill value={daysPresent} label="Days Present" />
+            <span className="h-8 w-px bg-border/30" />
+            <StatPill value={`${totalHours.toFixed(0)}h`} label="Total Hours" />
+            <span className="h-8 w-px bg-border/30" />
+            <StatPill
+              value={lastReport ? lastReport.overall_score.toFixed(0) : "—"}
+              label="Score"
+            />
+          </div>
+
+          {/* quick tags */}
+          <div className="mt-3 flex flex-wrap gap-2">
+            {([
+              [Clock, agent.shift_timing],
+              [Briefcase, agent.employee_type ? labelize(agent.employee_type) : null],
+              [MapPin, [agent.city, agent.country].filter(Boolean).join(", ") || null],
+            ] as [React.ElementType, string | null][]).filter(([, v]) => v).map(([Icon, label], i) => (
+              <span key={i} className="flex items-center gap-1.5 rounded-full border border-white/8 bg-white/5 px-3 py-1.5 text-xs text-muted-foreground/80">
+                <Icon className="size-3 text-primary/70" />{label}
+              </span>
+            ))}
+          </div>
+
           {/* read-only notice */}
-          <div className="mt-5 flex items-center gap-2 rounded-xl border border-amber-500/15 bg-amber-500/8 px-4 py-2.5 text-xs text-amber-400/80">
+          <div className="mt-4 flex items-center gap-2 rounded-xl border border-amber-500/15 bg-amber-500/8 px-3 py-2 text-[11px] text-amber-400/80">
             <Lock className="size-3.5 shrink-0" />
-            Your profile is view-only. Contact your admin to update personal details.
+            <span>Your profile is view-only. Contact your admin to update personal details.</span>
           </div>
         </div>
       </div>
 
-      {/* ── TABS ── */}
-      <Tabs defaultValue="personal" className="space-y-4">
-        <div className="no-scrollbar no-scrollbar-webkit overflow-x-auto pb-1">
-          <TabsList className="w-max min-w-full sm:w-auto">
-            <TabsTrigger value="personal"><User className="size-3.5" /> Personal</TabsTrigger>
-            <TabsTrigger value="employment"><Briefcase className="size-3.5" /> Employment</TabsTrigger>
-            <TabsTrigger value="uploads"><Upload className="size-3.5" /> My Uploads</TabsTrigger>
-            <TabsTrigger value="attendance"><Calendar className="size-3.5" /> Attendance</TabsTrigger>
-            <TabsTrigger value="sales"><TrendingUp className="size-3.5" /> My Sales</TabsTrigger>
-            <TabsTrigger value="salary"><Banknote className="size-3.5" /> Salary</TabsTrigger>
-            <TabsTrigger value="reports"><BarChart3 className="size-3.5" /> Reports</TabsTrigger>
-            <TabsTrigger value="documents"><FileText className="size-3.5" /> Documents</TabsTrigger>
-          </TabsList>
+      {/* ── TIKTOK-STYLE SEGMENTED TAB BAR (sticky) ──────────────────────────
+       * Centred segmented control that sticks under the profile header.
+       */}
+      <Tabs defaultValue="personal" className="mt-4 space-y-4">
+        <div className="sticky top-14 z-20 -mx-1 px-1 lg:top-6">
+          <div className="no-scrollbar no-scrollbar-webkit overflow-x-auto">
+            <TabsList className="flex w-max min-w-full justify-center gap-1 rounded-2xl border border-border/40 bg-card/80 p-1 backdrop-blur-lg">
+              {[
+                { v: "personal", label: "Personal", icon: User },
+                { v: "employment", label: "Work", icon: Briefcase },
+                { v: "uploads", label: "Uploads", icon: Upload },
+                { v: "attendance", label: "Attendance", icon: Calendar },
+                { v: "sales", label: "Sales", icon: TrendingUp },
+                { v: "salary", label: "Salary", icon: Banknote },
+                { v: "reports", label: "Reports", icon: BarChart3 },
+                { v: "documents", label: "Docs", icon: FileText },
+              ].map((t) => (
+                <TabsTrigger
+                  key={t.v}
+                  value={t.v}
+                  className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+                >
+                  <t.icon className="size-3.5" />
+                  <span className="hidden sm:inline">{t.label}</span>
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
         </div>
 
-        {/* PERSONAL — view only */}
-        <TabsContent value="personal" className="glass rounded-xl p-5 space-y-5">
-          <SectionTitle>Personal Information</SectionTitle>
+        {/* PERSONAL */}
+        <TabsContent value="personal" className="glass rounded-2xl p-5 space-y-5">
+          <SectionTitle icon={User}>Personal Information</SectionTitle>
           <div className="grid gap-2.5 sm:grid-cols-2">
             <InfoRow icon={User} label="Full Name" value={agent.full_name} />
             <InfoRow icon={User} label="Father's Name" value={agent.father_name} />
@@ -610,7 +737,7 @@ function MyProfilePage() {
             <InfoRow icon={ShieldCheck} label="Passport Number" value={agent.passport_number} />
           </div>
 
-          <SectionTitle>Contact</SectionTitle>
+          <SectionTitle icon={Phone}>Contact</SectionTitle>
           <div className="grid gap-2.5 sm:grid-cols-2">
             <InfoRow icon={Phone} label="Phone" value={agent.phone_number} />
             <InfoRow icon={Phone} label="WhatsApp" value={agent.whatsapp_number} />
@@ -624,9 +751,9 @@ function MyProfilePage() {
           </div>
         </TabsContent>
 
-        {/* EMPLOYMENT — view only */}
-        <TabsContent value="employment" className="glass rounded-xl p-5 space-y-5">
-          <SectionTitle>Employment Details</SectionTitle>
+        {/* EMPLOYMENT */}
+        <TabsContent value="employment" className="glass rounded-2xl p-5 space-y-5">
+          <SectionTitle icon={Briefcase}>Employment Details</SectionTitle>
           <div className="grid gap-2.5 sm:grid-cols-2">
             <InfoRow icon={Building2} label="Department" value={dept} />
             <InfoRow icon={Briefcase} label="Designation" value={desig} />
@@ -636,7 +763,7 @@ function MyProfilePage() {
             <InfoRow icon={Star} label="Status" value={labelize(agent.status)} />
           </div>
 
-          <SectionTitle>Education & Skills</SectionTitle>
+          <SectionTitle icon={GraduationCap}>Education & Skills</SectionTitle>
           <div className="grid gap-2.5 sm:grid-cols-2">
             <InfoRow icon={GraduationCap} label="Qualification" value={agent.highest_qualification} />
             <InfoRow icon={GraduationCap} label="Degree" value={agent.degree} />
@@ -649,12 +776,12 @@ function MyProfilePage() {
           </div>
         </TabsContent>
 
-        {/* MY UPLOADS — one-time upload for DP / CNIC */}
-        <TabsContent value="uploads" className="glass rounded-xl p-5 space-y-5">
-          <SectionTitle>Profile Picture (DP)</SectionTitle>
+        {/* MY UPLOADS */}
+        <TabsContent value="uploads" className="glass rounded-2xl p-5 space-y-5">
+          <SectionTitle icon={Upload}>Profile Picture (DP)</SectionTitle>
           <div className="space-y-2">
             {agent.profile_picture_url && (
-              <div className="mb-3 overflow-hidden rounded-xl">
+              <div className="mb-3 overflow-hidden rounded-2xl ring-1 ring-border/40">
                 <SecureImage path={agent.profile_picture_url} alt="Profile picture" className="h-48 w-full object-cover" />
               </div>
             )}
@@ -669,12 +796,12 @@ function MyProfilePage() {
             )}
           </div>
 
-          <SectionTitle>CNIC Documents</SectionTitle>
+          <SectionTitle icon={ShieldCheck}>CNIC Documents</SectionTitle>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <p className="text-xs font-medium text-muted-foreground">Front Side</p>
               {agent.cnic_front_url && (
-                <div className="mb-2 overflow-hidden rounded-xl">
+                <div className="mb-2 overflow-hidden rounded-2xl ring-1 ring-border/40">
                   <SecureImage path={agent.cnic_front_url} alt="CNIC front" className="h-32 w-full object-cover" />
                 </div>
               )}
@@ -688,7 +815,7 @@ function MyProfilePage() {
             <div className="space-y-2">
               <p className="text-xs font-medium text-muted-foreground">Back Side</p>
               {agent.cnic_back_url && (
-                <div className="mb-2 overflow-hidden rounded-xl">
+                <div className="mb-2 overflow-hidden rounded-2xl ring-1 ring-border/40">
                   <SecureImage path={agent.cnic_back_url} alt="CNIC back" className="h-32 w-full object-cover" />
                 </div>
               )}
@@ -706,27 +833,27 @@ function MyProfilePage() {
         </TabsContent>
 
         {/* ATTENDANCE */}
-        <TabsContent value="attendance" className="glass rounded-xl p-5">
+        <TabsContent value="attendance" className="glass rounded-2xl p-5">
           <AttendanceTab agentId={agent.id} />
         </TabsContent>
 
         {/* MY SALES */}
-        <TabsContent value="sales" className="glass rounded-xl p-5">
+        <TabsContent value="sales" className="glass rounded-2xl p-5">
           <MySalesTab agentId={agent.id} />
         </TabsContent>
 
         {/* SALARY */}
-        <TabsContent value="salary" className="glass rounded-xl p-5 space-y-5">
+        <TabsContent value="salary" className="glass rounded-2xl p-5 space-y-5">
           <SalaryTab agent={agent} />
         </TabsContent>
 
         {/* REPORTS */}
-        <TabsContent value="reports" className="glass rounded-xl p-5">
+        <TabsContent value="reports" className="glass rounded-2xl p-5">
           <ReportsTab agentId={agent.id} />
         </TabsContent>
 
         {/* DOCUMENTS */}
-        <TabsContent value="documents" className="glass rounded-xl p-5">
+        <TabsContent value="documents" className="glass rounded-2xl p-5">
           <DocumentsTab agentId={agent.id} />
         </TabsContent>
       </Tabs>
@@ -814,7 +941,7 @@ function ReportsTab({ agentId }: { agentId: string }) {
           { label: "Attendance", value: latest.attendance_score, icon: CheckCircle2 },
           { label: "Punctuality", value: latest.punctuality_score, icon: Clock },
         ].map((s) => (
-          <div key={s.label} className="rounded-xl border border-white/5 bg-white/3 p-3">
+          <div key={s.label} className="rounded-xl border border-white/5 bg-white/[0.03] p-3">
             <s.icon className={cn("size-4", scoreTone(s.value))} />
             <p className={cn("mt-1.5 font-mono text-xl font-bold tabular-nums", scoreTone(s.value))}>
               {s.value.toFixed(0)}
@@ -848,8 +975,8 @@ function ReportsTab({ agentId }: { agentId: string }) {
 
       {/* mini history */}
       <div>
-        <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
-          Recent Reports
+        <p className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+          <Activity className="size-3" /> Recent Reports
         </p>
         <div className="space-y-1.5">
           {reports.slice(0, 6).map((r) => (
@@ -863,7 +990,7 @@ function ReportsTab({ agentId }: { agentId: string }) {
 
 function MiniReportRow({ report }: { report: MonthlyReportWithAgent }) {
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-white/5 bg-white/3 px-3 py-2 transition-colors hover:bg-white/6">
+    <div className="flex items-center gap-3 rounded-xl border border-white/5 bg-white/[0.03] px-3 py-2 transition-colors hover:bg-white/[0.06]">
       <span className={cn("grid size-7 place-items-center rounded-md bg-secondary/60", scoreTone(report.overall_score))}>
         <BarChart3 className="size-3.5" />
       </span>
