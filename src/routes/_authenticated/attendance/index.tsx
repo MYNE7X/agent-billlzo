@@ -14,11 +14,22 @@ import {
   ChevronLeft,
   ChevronRight,
   Trash2,
+  FileText,
+  FileSpreadsheet,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { StatusBadge } from "@/components/billzo/StatusBadge";
 import { formatDate, formatTime, hoursLabel, labelize, todayISO } from "@/lib/billzo";
 import { useAttendance, useAttendanceRange, useMyAgent, useAgents, useDeleteAttendance } from "@/lib/queries";
@@ -38,6 +49,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { Database } from "@/integrations/supabase/types";
+import {
+  exportAttendancePDF,
+  exportAttendanceExcel,
+  type AttendanceExportRow,
+  type AttendanceExportSummary,
+} from "@/lib/export";
 
 type AttendanceStatus = Database["public"]["Enums"]["attendance_status"];
 
@@ -345,6 +362,118 @@ function AttendancePage() {
     "holiday",
   ];
 
+  // ── Export helpers ──────────────────────────────────────────────────────────
+  const [exporting, setExporting] = useState(false);
+
+  function buildExportRows(rows: AttendanceRow[]): AttendanceExportRow[] {
+    return rows.map((r) => ({
+      date: r.date,
+      agentName: r.agents?.full_name ?? "—",
+      employeeId: r.agents?.employee_id ?? "—",
+      department: r.agents?.departments?.name ?? "—",
+      clockIn: r.clock_in ? formatTime(r.clock_in) : "—",
+      clockOut: r.clock_out ? formatTime(r.clock_out) : "—",
+      hours: r.total_hours,
+      status: labelize(r.status),
+      notes: r.notes ?? "",
+    }));
+  }
+
+  function buildSummary(rows: AttendanceRow[]): AttendanceExportSummary {
+    const counts = rows.reduce<Record<string, number>>((acc, r) => {
+      acc[r.status] = (acc[r.status] ?? 0) + 1;
+      return acc;
+    }, {});
+    return {
+      totalRecords: rows.length,
+      present: counts["present"] ?? 0,
+      absent: counts["absent"] ?? 0,
+      late: counts["late"] ?? 0,
+      halfDay: counts["half_day"] ?? 0,
+      leave: counts["leave"] ?? 0,
+      holiday: counts["holiday"] ?? 0,
+      totalHours: rows.reduce((s, r) => s + (r.total_hours ?? 0), 0),
+    };
+  }
+
+  function buildFilterLabel(): string {
+    const parts: string[] = [];
+    if (filterAgent !== "all") {
+      const a = agents.find((x) => x.id === filterAgent);
+      if (a) parts.push(`Agent: ${a.full_name}`);
+    }
+    if (filterStatus !== "all") parts.push(`Status: ${labelize(filterStatus)}`);
+    return parts.length ? parts.join(" · ") : "All agents · All statuses";
+  }
+
+  async function handleExportPDF() {
+    const rows =
+      viewMode === "day"
+        ? (dayRows ?? [])
+        : filteredMonthRows;
+    if (!rows.length) {
+      toast.error("Nothing to export — no attendance records in current view");
+      return;
+    }
+    setExporting(true);
+    try {
+      const periodLabel =
+        viewMode === "day"
+          ? new Date(date).toLocaleDateString("en-PK", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+          : monthLabel(monthYM);
+      const filename =
+        viewMode === "day"
+          ? `attendance-day-${date}`
+          : `attendance-${monthYM}`;
+      await exportAttendancePDF(buildExportRows(rows), filename, {
+        title: "Attendance Report",
+        subtitle: viewMode === "day" ? "Daily Attendance" : "Monthly Attendance",
+        periodLabel,
+        summary: buildSummary(rows),
+        filterLabel: viewMode === "month" ? buildFilterLabel() : undefined,
+      });
+      toast.success("PDF exported");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not export PDF");
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  async function handleExportExcel() {
+    const rows =
+      viewMode === "day"
+        ? (dayRows ?? [])
+        : filteredMonthRows;
+    if (!rows.length) {
+      toast.error("Nothing to export — no attendance records in current view");
+      return;
+    }
+    setExporting(true);
+    try {
+      const periodLabel =
+        viewMode === "day"
+          ? new Date(date).toLocaleDateString("en-PK", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+          : monthLabel(monthYM);
+      const filename =
+        viewMode === "day"
+          ? `attendance-day-${date}`
+          : `attendance-${monthYM}`;
+      await exportAttendanceExcel(buildExportRows(rows), filename, {
+        title: "Attendance Report",
+        subtitle: viewMode === "day" ? "Daily Attendance" : "Monthly Attendance",
+        periodLabel,
+        summary: buildSummary(rows),
+        filterLabel: viewMode === "month" ? buildFilterLabel() : undefined,
+      });
+      toast.success("Excel exported");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not export Excel");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div className="space-y-5">
       {/* ── Header ── */}
@@ -435,6 +564,53 @@ function AttendancePage() {
                   </Button>
                 }
               />
+            )}
+
+            {/* export menu */}
+            {isStaff && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-1.5 border-primary/30 bg-primary/10 text-primary hover:bg-primary/20"
+                    disabled={exporting || (viewMode === "day" ? dayEmpty : monthEmpty)}
+                  >
+                    <Download className="size-4" />
+                    <span className="hidden sm:inline">{exporting ? "Exporting…" : "Export"}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                  <DropdownMenuLabel className="text-[10px] uppercase tracking-widest text-muted-foreground/70">
+                    Export current view
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={handleExportPDF}
+                    className="gap-2 cursor-pointer"
+                  >
+                    <FileText className="size-4 text-red-400" />
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium">Stylish PDF</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        Branded cover + stats + colored table
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={handleExportExcel}
+                    className="gap-2 cursor-pointer"
+                  >
+                    <FileSpreadsheet className="size-4 text-emerald-400" />
+                    <div className="flex flex-col">
+                      <span className="text-sm font-medium">Excel (.xlsx)</span>
+                      <span className="text-[10px] text-muted-foreground">
+                        Summary + Records sheets
+                      </span>
+                    </div>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
           </div>
         </div>
