@@ -29,9 +29,9 @@ create table if not exists public.agent_monthly_reports (
     -- achievement % is computed client-side to keep the column model simple,
     -- but we also persist it for quick filtering / sorting in admin views.
     achievement_pct numeric(5, 2) generated always as
-                        case when sales_target = 0 then 0
-                             else round((total_sales / sales_target) * 100, 2)
-                        end stored,
+                        (case when sales_target = 0 then 0
+                              else round((total_sales / sales_target) * 100, 2)
+                         end) stored,
 
     -- ── Scores (0..100 — percentage) ────────────────────────────────────────
     performance_score   numeric(5, 2) not null default 0 check (performance_score between 0 and 100),
@@ -42,12 +42,12 @@ create table if not exists public.agent_monthly_reports (
     -- overall 0..100 — weighted average stored so the agent list view can sort
     -- by a single column without re-computing.
     overall_score   numeric(5, 2) generated always as
-                        round(
+                        (round(
                             (performance_score * 0.35) +
                             (behavior_score      * 0.20) +
                             (attendance_score    * 0.25) +
                             (punctuality_score   * 0.20),
-                        2) stored,
+                        2)) stored,
 
     -- ── Attendance summary (denormalised snapshot for the month) ────────────
     days_present    integer not null default 0,
