@@ -1,0 +1,783 @@
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
+
+export type Agent = Database["public"]["Tables"]["agents"]["Row"];
+export type AgentInsert = Database["public"]["Tables"]["agents"]["Insert"];
+export type AgentUpdate = Database["public"]["Tables"]["agents"]["Update"];
+export type AgentDocument = Database["public"]["Tables"]["agent_documents"]["Row"];
+export type Attendance = Database["public"]["Tables"]["attendance"]["Row"];
+
+export type AgentWithRefs = Agent & {
+  departments: { id: string; name: string } | null;
+  designations: { id: string; name: string } | null;
+};
+
+const AGENT_SELECT = "*, departments:department_id(id,name), designations:designation_id(id,name)";
+
+export function useDepartments() {
+  return useQuery({
+    queryKey: ["departments"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("departments").select("id,name").order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useDesignations() {
+  return useQuery({
+    queryKey: ["designations"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("designations").select("id,name").order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+}
+
+export function useAgents() {
+  return useQuery({
+    queryKey: ["agents"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("agents")
+        .select(AGENT_SELECT)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as AgentWithRefs[];
+    },
+  });
+}
+
+export function useAgent(id: string) {
+  return useQuery({
+    queryKey: ["agent", id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("agents")
+        .select(AGENT_SELECT)
+        .eq("id", id)
+        .maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as unknown as AgentWithRefs | null;
+    },
+    enabled: Boolean(id),
+  });
+}
+
+/** The agent record linked to the signed-in user, if any. */
+export function useMyAgent(userId?: string | null) {
+  return useQuery({
+    queryKey: ["my-agent", userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("agents")
+        .select(AGENT_SELECT)
+        .eq("user_id", userId!)
+        .maybeSingle();
+      if (error) throw error;
+      return (data ?? null) as unknown as AgentWithRefs | null;
+    },
+    enabled: Boolean(userId),
+  });
+}
+
+export function useSaveAgent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, values }: { id?: string; values: AgentInsert | AgentUpdate }) => {
+      if (id) {
+        const { data, error } = await supabase
+          .from("agents")
+          .update(values as AgentUpdate)
+          .eq("id", id)
+          .select("id")
+          .single();
+        if (error) throw error;
+        return data;
+      }
+      const { data, error } = await supabase
+        .from("agents")
+        .insert(values as AgentInsert)
+        .select("id")
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["agents"] });
+      void qc.invalidateQueries({ queryKey: ["agent"] });
+      void qc.invalidateQueries({ queryKey: ["my-agent"] });
+    },
+  });
+}
+
+export function useDeleteAgent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("agents").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["agents"] }),
+  });
+}
+
+export function useAgentDocuments(agentId?: string) {
+  return useQuery({
+    queryKey: ["agent-documents", agentId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("agent_documents")
+        .select("*")
+        .eq("agent_id", agentId!)
+        .order("uploaded_date", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as AgentDocument[];
+    },
+    enabled: Boolean(agentId),
+  });
+}
+
+export type AttendanceRow = Attendance & {
+  agents: {
+    id: string;
+    full_name: string;
+    employee_id: string;
+    profile_picture_url: string | null;
+    department_id: string | null;
+    departments: { name: string } | null;
+  } | null;
+};
+
+export function useAttendance(date: string) {
+  return useQuery({
+    queryKey: ["attendance", date],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("attendance")
+        .select(
+          "*, agents:agent_id(id, full_name, employee_id, profile_picture_url, department_id, departments:department_id(name))",
+        )
+        .eq("date", date)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as AttendanceRow[];
+    },
+  });
+}
+
+/** Fetch all attendance records between two dates (inclusive). Used for month view. */
+export function useAttendanceRange(from: string, to: string) {
+  return useQuery({
+    queryKey: ["attendance-range", from, to],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("attendance")
+        .select(
+          "*, agents:agent_id(id, full_name, employee_id, profile_picture_url, department_id, departments:department_id(name))",
+        )
+        .gte("date", from)
+        .lte("date", to)
+        .order("date", { ascending: false })
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as unknown as AttendanceRow[];
+    },
+    enabled: Boolean(from && to),
+  });
+}
+
+export function useAgentAttendanceHistory(agentId?: string, limit = 60) {
+  return useQuery({
+    queryKey: ["attendance-history", agentId, limit],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("attendance")
+        .select("*")
+        .eq("agent_id", agentId!)
+        .order("date", { ascending: false })
+        .limit(limit);
+      if (error) throw error;
+      return (data ?? []) as Attendance[];
+    },
+    enabled: Boolean(agentId),
+  });
+}
+
+export function useStaffProfiles() {
+  return useQuery({
+    queryKey: ["staff-profiles"],
+    queryFn: async () => {
+      const [{ data: roles, error: rErr }, { data: profiles, error: pErr }] = await Promise.all([
+        supabase.from("user_roles").select("user_id, role"),
+        supabase.from("profiles").select("id, full_name, email, avatar_url"),
+      ]);
+      if (rErr) throw rErr;
+      if (pErr) throw pErr;
+      return (profiles ?? []).map((p) => ({
+        ...p,
+        roles: (roles ?? []).filter((r) => r.user_id === p.id).map((r) => r.role),
+      }));
+    },
+  });
+}
+
+export function logActivity(
+  actorId: string | undefined,
+  action: string,
+  entityType?: string,
+  entityId?: string,
+) {
+  if (!actorId) return;
+  void supabase
+    .from("activity_logs")
+    .insert({
+      actor_id: actorId,
+      action,
+      entity_type: entityType ?? null,
+      entity_id: entityId ?? null,
+    });
+}
+
+/** Fetch a single profile by user ID (for showing linked account info). */
+export function useProfile(userId?: string | null) {
+  return useQuery({
+    queryKey: ["profile", userId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, email, avatar_url, phone")
+        .eq("id", userId!)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: Boolean(userId),
+  });
+}
+
+/** All profiles whose user_id is NOT yet linked to any agent (plus optionally the current one). */
+export function useUnlinkedProfiles(currentLinkedId?: string | null) {
+  return useQuery({
+    queryKey: ["unlinked-profiles", currentLinkedId],
+    queryFn: async () => {
+      const [{ data: profiles, error: pErr }, { data: linked, error: lErr }] = await Promise.all([
+        supabase.from("profiles").select("id, full_name, email"),
+        supabase.from("agents").select("user_id").not("user_id", "is", null),
+      ]);
+      if (pErr) throw pErr;
+      if (lErr) throw lErr;
+      const linkedIds = new Set((linked ?? []).map((a) => a.user_id).filter(Boolean));
+      // include profiles that are not linked, or that are the current one (so we don't hide it)
+      return (profiles ?? []).filter((p) => !linkedIds.has(p.id) || p.id === currentLinkedId);
+    },
+  });
+}
+
+/** Fetch all profiles that are not yet approved (pending self-signup approvals). */
+export function usePendingUsers() {
+  return useQuery({
+    queryKey: ["pending-users"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, email, avatar_url")
+        .eq("is_approved", false)
+        .order("id");
+      if (error) throw error;
+      return (data ?? []) as {
+        id: string;
+        full_name: string | null;
+        email: string | null;
+        avatar_url: string | null;
+      }[];
+    },
+  });
+}
+
+/** Approve a user by setting is_approved = true on their profile. */
+export function useApproveUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ is_approved: true })
+        .eq("id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["pending-users"] });
+      void qc.invalidateQueries({ queryKey: ["staff-profiles"] });
+    },
+  });
+}
+
+type AttendanceStatus = Database["public"]["Enums"]["attendance_status"];
+
+/** Update an existing attendance record (admin adjustment). */
+export function useDeleteAttendance() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("attendance").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["attendance"] });
+      void qc.invalidateQueries({ queryKey: ["attendance-range"] });
+      void qc.invalidateQueries({ queryKey: ["attendance-history"] });
+    },
+  });
+}
+
+export function useUpdateAttendance() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      values,
+    }: {
+      id: string;
+      values: {
+        clock_in?: string | null;
+        clock_out?: string | null;
+        status?: AttendanceStatus | null;
+        notes?: string | null;
+      };
+    }) => {
+      // Recalculate total_hours when both times are provided
+      let total_hours: number | null = null;
+      if (values.clock_in && values.clock_out) {
+        total_hours =
+          (new Date(values.clock_out).getTime() - new Date(values.clock_in).getTime()) / 3_600_000;
+        if (total_hours < 0) total_hours = null;
+      }
+      const { status, notes, clock_in, clock_out } = values;
+      const { error } = await supabase
+        .from("attendance")
+        .update({
+          ...(clock_in !== undefined ? { clock_in } : {}),
+          ...(clock_out !== undefined ? { clock_out } : {}),
+          ...(status != null ? { status } : {}),
+          ...(notes !== undefined ? { notes } : {}),
+          ...(total_hours !== null ? { total_hours } : {}),
+        })
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["attendance"] }),
+  });
+}
+
+/** Insert a manual attendance record for any agent (admin-only action). */
+export function useInsertAttendance() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      agent_id,
+      date,
+      clock_in,
+      clock_out,
+      status,
+      notes,
+      created_by,
+    }: {
+      agent_id: string;
+      date: string;
+      clock_in?: string | null;
+      clock_out?: string | null;
+      status?: AttendanceStatus | null;
+      notes?: string | null;
+      created_by?: string | null;
+    }) => {
+      let total_hours: number | null = null;
+      if (clock_in && clock_out) {
+        total_hours = (new Date(clock_out).getTime() - new Date(clock_in).getTime()) / 3_600_000;
+        if (total_hours < 0) total_hours = null;
+      }
+      const { error } = await supabase.from("attendance").insert({
+        agent_id,
+        date,
+        ...(clock_in != null ? { clock_in } : {}),
+        ...(clock_out != null ? { clock_out } : {}),
+        ...(status != null ? { status } : {}),
+        ...(notes != null ? { notes } : {}),
+        ...(total_hours !== null ? { total_hours } : {}),
+        ...(created_by != null ? { created_by } : {}),
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["attendance"] }),
+  });
+}
+
+// ── Monthly Sales ─────────────────────────────────────────────────────────────
+
+export type MonthlySale = Database["public"]["Tables"]["agent_monthly_sales"]["Row"];
+
+export function useAgentMonthlySales(agentId?: string) {
+  return useQuery({
+    queryKey: ["monthly-sales", agentId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("agent_monthly_sales")
+        .select("*")
+        .eq("agent_id", agentId!)
+        .order("month", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as MonthlySale[];
+    },
+    enabled: Boolean(agentId),
+  });
+}
+
+export function useUpsertMonthlySale() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      agentId,
+      month,
+      amount,
+      notes,
+      createdBy,
+    }: {
+      agentId: string;
+      month: string; // "YYYY-MM-01"
+      amount: number;
+      notes?: string;
+      createdBy?: string | null;
+    }) => {
+      const { error } = await supabase
+        .from("agent_monthly_sales")
+        .upsert(
+          {
+            agent_id: agentId,
+            month,
+            amount,
+            notes: notes ?? null,
+            created_by: createdBy ?? null,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "agent_id,month" },
+        );
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      void qc.invalidateQueries({ queryKey: ["monthly-sales", vars.agentId] });
+    },
+  });
+}
+
+export function useDeleteMonthlySale() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, agentId }: { id: string; agentId: string }) => {
+      const { error } = await supabase.from("agent_monthly_sales").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      void qc.invalidateQueries({ queryKey: ["monthly-sales", vars.agentId] });
+    },
+  });
+}
+
+// ── Office Expenses ───────────────────────────────────────────────────────────
+
+export type OfficeExpense = Database["public"]["Tables"]["office_expenses"]["Row"];
+
+export function useExpenses(month?: string) {
+  return useQuery({
+    queryKey: ["expenses", month ?? "all"],
+    queryFn: async () => {
+      let q = supabase
+        .from("office_expenses")
+        .select("*")
+        .order("expense_date", { ascending: false });
+      if (month) q = q.eq("month", month);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []) as OfficeExpense[];
+    },
+  });
+}
+
+export type ExpensePayload = {
+  title: string;
+  category?: string;
+  amount: number;
+  expense_date: string;
+  month: string;
+  description?: string | null;
+  paid_to?: string | null;
+  payment_method?: string | null;
+  receipt_url?: string | null;
+  created_by?: string | null;
+};
+
+export function useSaveExpense() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, values }: { id?: string; values: ExpensePayload }) => {
+      if (id) {
+        const { error } = await supabase.from("office_expenses").update(values).eq("id", id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("office_expenses").insert(values);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["expenses"] }),
+  });
+}
+
+export function useDeleteExpense() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("office_expenses").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["expenses"] }),
+  });
+}
+
+// ── Salary Ledger ─────────────────────────────────────────────────────────────
+
+export type SalaryEntry = {
+  id: string;
+  agent_id: string;
+  month: string;
+  entry_type: "base_salary" | "deduction" | "bonus";
+  amount: number;
+  remarks: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export function useAgentSalaryLedger(agentId?: string, month?: string) {
+  return useQuery({
+    queryKey: ["salary-ledger", agentId, month ?? "all"],
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let q = (supabase as any)
+        .from("agent_salary_ledger")
+        .select("*")
+        .eq("agent_id", agentId!);
+      if (month) q = q.eq("month", month);
+      q = q.order("created_at", { ascending: true });
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []) as SalaryEntry[];
+    },
+    enabled: Boolean(agentId),
+  });
+}
+
+export function useUpsertSalaryEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      agentId,
+      month,
+      entry_type,
+      amount,
+      remarks,
+      createdBy,
+    }: {
+      id?: string;
+      agentId: string;
+      month: string;
+      entry_type: "base_salary" | "deduction" | "bonus";
+      amount: number;
+      remarks?: string;
+      createdBy?: string | null;
+    }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const table = (supabase as any).from("agent_salary_ledger");
+      if (id) {
+        const { error } = await table
+          .update({ amount, remarks: remarks ?? null, updated_at: new Date().toISOString() })
+          .eq("id", id);
+        if (error) throw error;
+      } else {
+        const { error } = await table.insert({
+          agent_id: agentId,
+          month,
+          entry_type,
+          amount,
+          remarks: remarks ?? null,
+          created_by: createdBy ?? null,
+        });
+        if (error) throw error;
+      }
+    },
+    onSuccess: (_d, vars) => {
+      void qc.invalidateQueries({ queryKey: ["salary-ledger", vars.agentId] });
+    },
+  });
+}
+
+export function useDeleteSalaryEntry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, agentId }: { id: string; agentId: string }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any)
+        .from("agent_salary_ledger")
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: (_d, vars) => {
+      void qc.invalidateQueries({ queryKey: ["salary-ledger", vars.agentId] });
+    },
+  });
+}
+
+// ── Office Network Settings ───────────────────────────────────────────────────
+
+export type NetworkSetting = {
+  id: string;
+  name: string;
+  allowed_ip: string;
+  enabled: boolean;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type AttendanceViolation = {
+  id: string;
+  agent_id: string | null;
+  attempted_at: string;
+  ip_address: string | null;
+  notes: string | null;
+  created_at: string;
+  agents?: { full_name: string; employee_id: string } | null;
+};
+
+export function useNetworkSettings() {
+  return useQuery({
+    queryKey: ["network-settings"],
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
+        .from("office_network_settings")
+        .select("*")
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as NetworkSetting[];
+    },
+  });
+}
+
+export function useSaveNetworkSetting() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      name,
+      allowed_ip,
+      enabled,
+      createdBy,
+    }: {
+      id?: string;
+      name: string;
+      allowed_ip: string;
+      enabled?: boolean;
+      createdBy?: string | null;
+    }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const table = (supabase as any).from("office_network_settings");
+      if (id) {
+        const { error } = await table
+          .update({ name, allowed_ip, enabled: enabled ?? true, updated_at: new Date().toISOString() })
+          .eq("id", id);
+        if (error) throw error;
+      } else {
+        const { error } = await table.insert({ name, allowed_ip, enabled: enabled ?? true, created_by: createdBy ?? null });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["network-settings"] }),
+  });
+}
+
+export function useDeleteNetworkSetting() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any).from("office_network_settings").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["network-settings"] }),
+  });
+}
+
+export function useAttendanceViolations() {
+  return useQuery({
+    queryKey: ["attendance-violations"],
+    queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data, error } = await (supabase as any)
+        .from("attendance_violations")
+        .select("*, agents:agent_id(full_name, employee_id)")
+        .order("attempted_at", { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      return (data ?? []) as AttendanceViolation[];
+    },
+  });
+}
+
+export function useLogAttendanceViolation() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      agentId,
+      ipAddress,
+      notes,
+    }: {
+      agentId: string;
+      ipAddress: string;
+      notes?: string;
+    }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error } = await (supabase as any).from("attendance_violations").insert({
+        agent_id: agentId,
+        ip_address: ipAddress,
+        notes: notes ?? null,
+      });
+      if (error) console.error("Violation log error:", error);
+    },
+    onSuccess: () => void qc.invalidateQueries({ queryKey: ["attendance-violations"] }),
+  });
+}
+
+/** Link (or unlink) a user account to an agent by setting agents.user_id. */
+export function useLinkAgent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ agentId, userId }: { agentId: string; userId: string | null }) => {
+      const { error } = await supabase
+        .from("agents")
+        .update({ user_id: userId } as AgentUpdate)
+        .eq("id", agentId);
+      if (error) throw error;
+    },
+    onSuccess: (_data, vars) => {
+      void qc.invalidateQueries({ queryKey: ["agents"] });
+      void qc.invalidateQueries({ queryKey: ["agent", vars.agentId] });
+      void qc.invalidateQueries({ queryKey: ["my-agent"] });
+      void qc.invalidateQueries({ queryKey: ["unlinked-profiles"] });
+      void qc.invalidateQueries({ queryKey: ["profile", vars.userId] });
+    },
+  });
+}

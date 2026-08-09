@@ -1,0 +1,60 @@
+export const GENDERS = ["Male", "Female", "Other"] as const;
+export const BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"] as const;
+export const MARITAL_STATUSES = ["Single", "Married", "Divorced", "Widowed"] as const;
+export const EMPLOYEE_TYPES = ["Full Time", "Part Time", "Contract", "Internship", "Probation"] as const;
+export const SHIFT_TIMINGS = [
+  "Morning (09:00 - 18:00)",
+  "Evening (14:00 - 23:00)",
+  "Night (22:00 - 07:00)",
+  "Flexible",
+] as const;
+export const AGENT_STATUSES = ["active", "inactive", "suspended", "resigned"] as const;
+export const ATTENDANCE_STATUSES = ["present", "absent", "late", "half_day", "leave", "holiday"] as const;
+export const PROVINCES = [
+  "Punjab",
+  "Sindh",
+  "Khyber Pakhtunkhwa",
+  "Balochistan",
+  "Gilgit-Baltistan",
+  "Azad Jammu & Kashmir",
+  "Islamabad Capital Territory",
+] as const;
+
+export const DOCUMENT_CATEGORIES = [
+  { value: "profile_picture", label: "Profile Picture" },
+  { value: "cnic_front", label: "CNIC Front" },
+  { value: "cnic_back", label: "CNIC Back" },
+  { value: "passport", label: "Passport" },
+  { value: "certificate", label: "Certificate" },
+  { value: "resume", label: "Resume" },
+  { value: "other", label: "Other Document" },
+] as const;
+
+export type AgentStatus = (typeof AGENT_STATUSES)[number];
+export type AttendanceStatus = (typeof ATTENDANCE_STATUSES)[number];
+
+export const labelize = (value?: string | null) =>
+  (value ?? "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+export const formatPKR = (value?: number | null) =>
+  value == null ? "—" : `₨ ${Number(value).toLocaleString("en-PK", { maximumFractionDigits: 0 })}`;
+
+export const formatTime = (iso?: string | null) =>
+  iso
+    ? new Date(iso).toLocaleTimeString("en-PK", { hour: "2-digit", minute: "2-digit", hour12: true })
+    : "—";
+
+export const formatDate = (value?: string | null) =>
+  value ? new Date(value).toLocaleDateString("en-PK", { year: "numeric", month: "short", day: "2-digit" }) : "—";
+
+export const todayISO = () => new Date().toISOString().slice(0, 10);
+
+export const initials = (name?: string | null) =>
+  (name ?? "?")
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((p) => p[0]!.toUpperCase())
+    .join("");
+
+export const hoursLabel = (h?: number | null) => (h == null ? "—" : `${Number(h).toFixed(2)} h`);
