@@ -400,12 +400,15 @@ export function useUpdateAttendance() {
         notes?: string | null;
       };
     }) => {
-      // Recalculate total_hours when both times are provided
+      // Recalculate total_hours when both times are provided.
+      // If clock_out < clock_in (e.g. 21:00 → 06:00 night shift crossing
+      // midnight), assume the clock-out is on the next calendar day and add
+      // 24 hours so the result is positive.
       let total_hours: number | null = null;
       if (values.clock_in && values.clock_out) {
         total_hours =
           (new Date(values.clock_out).getTime() - new Date(values.clock_in).getTime()) / 3_600_000;
-        if (total_hours < 0) total_hours = null;
+        if (total_hours < 0) total_hours += 24;
       }
       const { status, notes, clock_in, clock_out } = values;
       const { error } = await supabase
@@ -448,7 +451,8 @@ export function useInsertAttendance() {
       let total_hours: number | null = null;
       if (clock_in && clock_out) {
         total_hours = (new Date(clock_out).getTime() - new Date(clock_in).getTime()) / 3_600_000;
-        if (total_hours < 0) total_hours = null;
+        // Night-shift fix: if clock_out < clock_in, assume midnight crossing.
+        if (total_hours < 0) total_hours += 24;
       }
       const { error } = await supabase.from("attendance").insert({
         agent_id,

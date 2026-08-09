@@ -32,10 +32,24 @@ function isoToTime(iso?: string | null): string {
   return `${hh}:${mm}`;
 }
 
-/** Combine a date string "YYYY-MM-DD" + time "HH:MM" → ISO string in local tz */
-function toISO(date: string, time: string): string | null {
+/** Combine a date string "YYYY-MM-DD" + time "HH:MM" → ISO string in local tz.
+ *  If `forClockOut` is true and `time` is earlier than `clockInTime`, the
+ *  resulting date is rolled to the NEXT day — this correctly handles night
+ *  shifts that cross midnight (e.g. clock-in 21:00 → clock-out 06:00 next day).
+ */
+function toISO(date: string, time: string, opts?: { forClockOut?: boolean; clockInTime?: string }): string | null {
   if (!date || !time) return null;
-  return new Date(`${date}T${time}:00`).toISOString();
+  let dateStr = date;
+  if (opts?.forClockOut && opts.clockInTime) {
+    // Compare HH:MM strings lexicographically — works because they're zero-padded.
+    if (time < opts.clockInTime) {
+      // clock-out is earlier in the day than clock-in → must be next day
+      const d = new Date(`${date}T00:00:00`);
+      d.setDate(d.getDate() + 1);
+      dateStr = d.toISOString().slice(0, 10);
+    }
+  }
+  return new Date(`${dateStr}T${time}:00`).toISOString();
 }
 
 /* ------------------------------------------------------------------ */
@@ -71,7 +85,7 @@ export function AttendanceEditDialog({ row, trigger }: EditProps) {
         id: row.id,
         values: {
           clock_in: clockIn ? toISO(row.date, clockIn) : null,
-          clock_out: clockOut ? toISO(row.date, clockOut) : null,
+          clock_out: clockOut ? toISO(row.date, clockOut, { forClockOut: true, clockInTime: clockIn }) : null,
           status: (status || null) as AttendanceStatus | null,
           notes: notes || null,
         },
@@ -203,7 +217,7 @@ export function AttendanceAddDialog({ defaultDate, createdBy, trigger }: AddProp
         agent_id: agentId,
         date,
         clock_in: clockIn ? toISO(date, clockIn) : null,
-        clock_out: clockOut ? toISO(date, clockOut) : null,
+        clock_out: clockOut ? toISO(date, clockOut, { forClockOut: true, clockInTime: clockIn }) : null,
         status: (status || null) as AttendanceStatus | null,
         notes: notes || null,
         created_by: createdBy ?? null,

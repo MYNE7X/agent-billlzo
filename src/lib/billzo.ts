@@ -57,4 +57,12 @@ export const initials = (name?: string | null) =>
     .map((p) => p[0]!.toUpperCase())
     .join("");
 
-export const hoursLabel = (h?: number | null) => (h == null ? "—" : `${Number(h).toFixed(2)} h`);
+export const hoursLabel = (h?: number | null) => {
+  if (h == null) return "—";
+  const n = Number(h);
+  // Safety net: never show a negative value. If a legacy record slipped
+  // through with negative hours, fall back to absolute value so the UI
+  // doesn't display "-15.00 h".
+  const safe = n < 0 ? Math.abs(n) : n;
+  return `${safe.toFixed(2)} h`;
+};
