@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -15,7 +16,12 @@ export type AgentWithRefs = Agent & {
   offices: { id: string; office_name: string; office_code: string; location: string | null } | null;
 };
 
-const AGENT_SELECT = "*, departments:department_id(id,name), designations:designation_id(id,name), offices:office_id(id,office_name,office_code,location)";
+// NOTE: We do NOT join offices in AGENT_SELECT because the offices table +
+// office_id column may not exist yet (migration pending). Instead, office info
+// is fetched separately via useOffices() and merged client-side where needed.
+// This makes the app resilient: if the migration hasn't been applied, agents
+// still load normally (office_id will be undefined, offices will be null).
+const AGENT_SELECT = "*, departments:department_id(id,name), designations:designation_id(id,name)";
 
 export function useDepartments() {
   return useQuery({
@@ -980,8 +986,22 @@ export function useOffices(statusFilter?: "active" | "inactive") {
         .order("office_name", { ascending: true });
       if (statusFilter) q = q.eq("status", statusFilter);
       const { data, error } = await q;
-      if (error) throw error;
+      // If the offices table doesn't exist yet (migration pending),
+      // return an empty array instead of throwing — the app still works.
+      if (error) {
+        // PGRST205 = "no matching relationship found" (table/column missing)
+        // 42P01 = "relation does not exist"
+        if (error.code === "PGRST205" || error.code === "42P01" || error.message.includes("does not exist")) {
+          return [] as Office[];
+        }
+        throw error;
+      }
       return (data ?? []) as Office[];
+    },
+    // Don't retry on schema errors — just return empty
+    retry: (failureCount, error) => {
+      if (error && (error.code === "PGRST205" || error.code === "42P01")) return false;
+      return failureCount < 2;
     },
   });
 }
@@ -997,7 +1017,12 @@ export function useOfficesWithCounts(statusFilter?: "active" | "inactive") {
         .order("office_name", { ascending: true });
       if (statusFilter) q = q.eq("status", statusFilter);
       const { data, error } = await q;
-      if (error) throw error;
+      if (error) {
+        if (error.code === "PGRST205" || error.code === "42P01" || error.message.includes("does not exist")) {
+          return [] as (Office & { agent_count: number })[];
+        }
+        throw error;
+      }
       return (data ?? []).map((o) => {
         const agents = (o as unknown as { agents?: unknown[] }).agents;
         return {
@@ -1005,6 +1030,10 @@ export function useOfficesWithCounts(statusFilter?: "active" | "inactive") {
           agent_count: Array.isArray(agents) ? agents.length : 0,
         };
       }) as (Office & { agent_count: number })[];
+    },
+    retry: (failureCount, error) => {
+      if (error && (error.code === "PGRST205" || error.code === "42P01")) return false;
+      return failureCount < 2;
     },
   });
 }
@@ -1120,4 +1149,19 @@ export function useToggleEmployeeIdLock() {
       void qc.invalidateQueries({ queryKey: ["agents"] });
     },
   });
+}
+
+/**
+ * Helper hook: returns a Map of office_id → office object.
+ * Use this to look up an agent's office from their office_id field.
+ * Returns an empty Map if the offices table doesn't exist yet (migration pending).
+ */
+export function useOfficesMap() {
+  const { data: offices = [] } = useOffices("active");
+  const map = useMemo(() => {
+    const m = new Map<string, Office>();
+    for (const o of offices) m.set(o.id, o);
+    return m;
+  }, [offices]);
+  return map;
 }

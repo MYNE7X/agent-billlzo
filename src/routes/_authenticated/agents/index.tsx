@@ -34,7 +34,7 @@ import {
 import { StatusBadge } from "@/components/billzo/StatusBadge";
 import { SecureImage } from "@/components/billzo/SecureImage";
 import { AGENT_STATUSES, formatDate, formatPKR, initials, labelize, todayISO } from "@/lib/billzo";
-import { useAgents, useDeleteAgent, useDepartments } from "@/lib/queries";
+import { useAgents, useDeleteAgent, useDepartments, useOffices, useOfficesMap } from "@/lib/queries";
 import { exportCSV, exportExcel, exportPDF, type ExportColumn } from "@/lib/export";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -410,10 +410,13 @@ function AgentsPage() {
 
   const { data: agents, isLoading } = useAgents();
   const { data: departments } = useDepartments();
+  const { data: offices = [] } = useOffices("active");
+  const officesMap = useOfficesMap();
   const del = useDeleteAgent();
 
   const [q, setQ] = useState("");
   const [dept, setDept] = useState("all");
+  const [officeFilter, setOfficeFilter] = useState("all");
   const [status, setStatus] = useState("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -428,6 +431,7 @@ function AgentsPage() {
       return (
         matches &&
         (dept === "all" || a.department_id === dept) &&
+        (officeFilter === "all" || a.office_id === officeFilter) &&
         (status === "all" || a.status === status)
       );
     });
@@ -438,7 +442,7 @@ function AgentsPage() {
       return 2;
     };
     return [...list].sort((a, b) => genderOrder(a.gender) - genderOrder(b.gender));
-  }, [agents, q, dept, status]);
+  }, [agents, q, dept, officeFilter, status]);
 
   const activeCount = (agents ?? []).filter((a) => a.status === "active").length;
   const inactiveCount = (agents ?? []).filter((a) => a.status !== "active").length;
@@ -609,6 +613,22 @@ function AgentsPage() {
             ))}
           </SelectContent>
         </Select>
+        {offices.length > 0 && (
+          <Select value={officeFilter} onValueChange={setOfficeFilter}>
+            <SelectTrigger className="border-border/50 bg-secondary/30 sm:w-44">
+              <Building2 className="mr-2 size-3.5 text-primary/60" />
+              <SelectValue placeholder="Office" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All offices</SelectItem>
+              {offices.map((o) => (
+                <SelectItem key={o.id} value={o.id}>
+                  {o.office_name} ({o.office_code})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <Select value={status} onValueChange={setStatus}>
           <SelectTrigger className="border-border/50 bg-secondary/30 sm:w-40">
             <SelectValue placeholder="Status" />
@@ -665,6 +685,7 @@ function AgentsPage() {
                       "Employee ID",
                       "Department",
                       "Designation",
+                      "Office",
                       "Joined",
                       "Salary",
                       "Status",
@@ -784,6 +805,18 @@ function AgentsPage() {
                           ) : (
                             <span className="text-xs text-muted-foreground/40">—</span>
                           )}
+                        </td>
+                        <td className="px-4 py-3.5">
+                          {(() => {
+                            const off = officesMap.get(a.office_id ?? "");
+                            if (!off) return <span className="text-xs text-muted-foreground/40">—</span>;
+                            return (
+                              <span className="inline-flex items-center gap-1.5 rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary ring-1 ring-primary/20">
+                                <Building2 className="size-3 opacity-70" />
+                                {off.office_name}
+                              </span>
+                            );
+                          })()}
                         </td>
                         <td className="px-4 py-3.5">
                           <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground/70">

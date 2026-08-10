@@ -15,7 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   useMyAgent, useAgentAttendanceHistory, useAgentDocuments,
   useSaveAgent, useAgentMonthlySales, useAgentSalaryLedger,
-  useAgentReports, useAgentMonthAttendance,
+  useAgentReports, useAgentMonthAttendance, useOfficesMap,
   type AgentWithRefs, type MonthlyReportWithAgent,
 } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
@@ -660,6 +660,7 @@ function MyProfilePage() {
   const { user, profile } = useAuth();
   const { data: agent, isLoading, refetch } = useMyAgent(user?.id);
   const save = useSaveAgent();
+  const officesMap = useOfficesMap();
   const { data: history = [] } = useAgentAttendanceHistory(agent?.id, 90);
   const { data: reports = [] } = useAgentReports(agent?.id);
 
@@ -871,7 +872,7 @@ function MyProfilePage() {
           {/* quick tags */}
           <div className="mt-3 flex flex-wrap gap-2">
             {([
-              [Building2, agent.offices?.office_name ?? null],
+              [Building2, officesMap.get(agent.office_id ?? "")?.office_name ?? null],
               [Clock, agent.shift_timing],
               [Briefcase, agent.employee_type ? labelize(agent.employee_type) : null],
               [MapPin, [agent.city, agent.country].filter(Boolean).join(", ") || null],
@@ -955,7 +956,7 @@ function MyProfilePage() {
           <div className="grid gap-2.5 sm:grid-cols-2">
             <InfoRow icon={Building2} label="Department" value={dept} />
             <InfoRow icon={Briefcase} label="Designation" value={desig} />
-            <InfoRow icon={Building2} label="Office" value={agent.offices?.office_name ?? null} />
+            <InfoRow icon={Building2} label="Office" value={officesMap.get(agent.office_id ?? "")?.office_name ?? null} />
             <InfoRow icon={Calendar} label="Joining Date" value={formatDate(agent.joining_date)} />
             <InfoRow icon={Briefcase} label="Employee Type" value={labelize(agent.employee_type)} />
             <InfoRow icon={Clock} label="Shift Timing" value={agent.shift_timing} />
