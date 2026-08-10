@@ -23,6 +23,8 @@ import {
   Info,
   X,
   Filter,
+  Download,
+  Loader2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -72,6 +74,7 @@ import { SecureImage } from "@/components/billzo/SecureImage";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { effectiveHours, shiftExpectedHours } from "@/lib/shift";
+import { exportAllReportsPDF, type AllReportsPdfRow } from "@/lib/export";
 
 export const Route = createFileRoute("/_authenticated/reports/manage")({
   component: ManageReportsPage,
@@ -222,6 +225,7 @@ function ManageReportsPage() {
   const [editing, setEditing] = useState<MonthlyReportWithAgent | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<MonthlyReportWithAgent | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   useEffect(() => {
     if (!isStaff) {
@@ -317,6 +321,63 @@ function ManageReportsPage() {
     }
   }
 
+  // ── Download all reports as a single PDF (for salary disbursement) ──────────
+  // Generates a multi-page PDF: cover page + one page per agent + summary table.
+  // Uses the currently filtered list (respects search + month filter).
+  async function handleDownloadAllPDF() {
+    if (!filtered.length) {
+      toast.error("No reports to export — adjust your filters first");
+      return;
+    }
+    setExporting(true);
+    try {
+      // Map the report rows to the PDF format
+      const pdfRows: AllReportsPdfRow[] = filtered.map((r) => ({
+        agentName: r.agents?.full_name ?? "Unknown",
+        employeeId: r.agents?.employee_id ?? "—",
+        department: r.agents?.departments?.name ?? null,
+        designation: r.agents?.designations?.name ?? null,
+        month: r.month,
+        baseSalary: Number(r.base_salary),
+        bonus: Number(r.bonus),
+        deduction: Number(r.deduction),
+        netSalary: Number(r.net_salary),
+        totalSales: Number(r.total_sales),
+        salesTarget: Number(r.sales_target),
+        achievementPct: Number(r.achievement_pct),
+        performanceScore: Number(r.performance_score),
+        behaviorScore: Number(r.behavior_score),
+        attendanceScore: Number(r.attendance_score),
+        punctualityScore: Number(r.punctuality_score),
+        overallScore: Number(r.overall_score),
+        daysPresent: r.days_present,
+        daysAbsent: r.days_absent,
+        daysLate: r.days_late,
+        daysLeave: r.days_leave,
+        totalHours: Number(r.total_hours),
+        headline: r.headline,
+        notes: r.notes,
+        sentiment: r.sentiment,
+      }));
+
+      // Determine month label from the filter or the first report
+      const monthForLabel = monthFilter !== "all" ? monthFilter : filtered[0]!.month;
+      const monthLabel = new Date(monthForLabel).toLocaleDateString("en-PK", {
+        year: "numeric",
+        month: "long",
+      });
+
+      const filename = `billzo-reports-${monthForLabel.slice(0, 7)}-${new Date().toISOString().slice(0, 10)}`;
+      await exportAllReportsPDF(pdfRows, filename, { monthLabel });
+      toast.success(`PDF generated — ${pdfRows.length} agent${pdfRows.length === 1 ? "" : "s"}`);
+    } catch (e) {
+      console.error("[DownloadAllPDF] error:", e);
+      toast.error(e instanceof Error ? e.message : "Could not generate PDF");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   if (!isStaff) return null;
 
   return (
@@ -355,9 +416,21 @@ function ManageReportsPage() {
               </p>
             </div>
           </div>
-          <Button onClick={openCreate} className="shrink-0">
-            <Plus className="size-4" /> New Report
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={handleDownloadAllPDF}
+              variant="outline"
+              className="shrink-0 border-primary/30 bg-primary/10 text-primary hover:bg-primary/20"
+              disabled={exporting || !filtered.length}
+            >
+              {exporting ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+              <span className="hidden sm:inline">Download All PDF</span>
+              <span className="sm:hidden">PDF</span>
+            </Button>
+            <Button onClick={openCreate} className="shrink-0">
+              <Plus className="size-4" /> New Report
+            </Button>
+          </div>
         </div>
       </div>
 

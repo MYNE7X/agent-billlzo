@@ -28,6 +28,7 @@ import { SecureImage } from "@/components/billzo/SecureImage";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { effectiveHours, shiftExpectedHours, prettyHM, parseShift } from "@/lib/shift";
+import { exportAgentAttendancePDF } from "@/lib/export";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/my-profile")({
@@ -128,7 +129,11 @@ function OneTimeUpload({
 
 // ── attendance tab ────────────────────────────────────────────────────────────
 
-function AttendanceTab({ agentId, shiftTiming }: { agentId: string; shiftTiming?: string | null }) {
+function AttendanceTab({ agent }: { agent: AgentWithRefs }) {
+  const agentId = agent.id;
+  const shiftTiming = agent.shift_timing;
+  const [exporting, setExporting] = useState(false);
+
   // Default to current month
   const today = new Date();
   const defaultMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
@@ -178,9 +183,55 @@ function AttendanceTab({ agentId, shiftTiming }: { agentId: string; shiftTiming?
   const monthLabel = new Date(selectedMonth + "-01").toLocaleDateString("en-PK", { year: "numeric", month: "long" });
   const shiftParsed = parseShift(shiftTiming);
 
+  // ── Download attendance as PDF ─────────────────────────────────────────────
+  async function handleDownloadPDF() {
+    if (!monthRecords.length) {
+      toast.error("No attendance records to export for this month");
+      return;
+    }
+    setExporting(true);
+    try {
+      // Build rows for the PDF — actual records only (no auto-fill for agents)
+      const pdfRows = monthRecords.map((r) => ({
+        date: r.date,
+        dayName: new Date(r.date).toLocaleDateString("en-US", { weekday: "short" }),
+        clockIn: r.clock_in,
+        clockOut: r.clock_out,
+        hours: effectiveHours(r, shiftTiming),
+        status: r.status ?? "",
+        notes: r.notes ?? null,
+        autoFilled: false,
+      }));
+
+      const sum = counts;
+      await exportAgentAttendancePDF(pdfRows, `attendance-${agent.employee_id ?? agent.id}-${selectedMonth}`, {
+        agentName: agent.full_name,
+        employeeId: agent.employee_id ?? "—",
+        department: agent.departments?.name ?? null,
+        designation: agent.designations?.name ?? null,
+        shiftTiming: shiftTiming ?? null,
+        monthLabel,
+        summary: {
+          daysPresent: sum["present"] ?? 0,
+          daysAbsent: sum["absent"] ?? 0,
+          daysLate: sum["late"] ?? 0,
+          daysLeave: sum["leave"] ?? 0,
+          daysHalfDay: sum["half_day"] ?? 0,
+          totalHours: sum["totalHours"] ?? 0,
+        },
+      });
+      toast.success("Attendance PDF downloaded");
+    } catch (e) {
+      console.error("[AttendancePDF] error:", e);
+      toast.error(e instanceof Error ? e.message : "Could not generate PDF");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
-      {/* Month navigator */}
+      {/* Month navigator + PDF download */}
       <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/40 bg-secondary/20 px-4 py-3">
         <button
           onClick={goPrevMonth}
@@ -219,6 +270,33 @@ function AttendanceTab({ agentId, shiftTiming }: { agentId: string; shiftTiming?
           </div>
         ))}
       </div>
+
+      {/* Download PDF button */}
+      {!isLoading && !isError && monthRecords.length > 0 && (
+        <div className="flex justify-end">
+          <Button
+            onClick={handleDownloadPDF}
+            variant="outline"
+            size="sm"
+            className="border-primary/30 bg-primary/10 text-primary hover:bg-primary/20"
+            disabled={exporting}
+          >
+            {exporting ? (
+              <>
+                <span className="size-3.5 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+                Generating…
+              </>
+            ) : (
+              <>
+                <svg viewBox="0 0 24 24" fill="none" className="size-3.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
+                </svg>
+                Download PDF
+              </>
+            )}
+          </Button>
+        </div>
+      )}
 
       {/* Attendance list — actual records only */}
       {isLoading ? (
@@ -952,7 +1030,7 @@ function MyProfilePage() {
 
         {/* ATTENDANCE */}
         <TabsContent value="attendance" className="glass rounded-2xl p-5">
-          <AttendanceTab agentId={agent.id} shiftTiming={agent.shift_timing} />
+          <AttendanceTab agent={agent} />
         </TabsContent>
 
         {/* MY SALES */}
