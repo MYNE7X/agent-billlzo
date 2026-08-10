@@ -5,7 +5,7 @@ import {
   Building2, Clock, Banknote, CreditCard, FileText, ShieldCheck,
   Hash, HeartPulse, Languages, Star, Upload, CheckCircle2,
   TrendingUp, Lock, BarChart3, Award, Smile, Target, Trophy, ArrowRight,
-  Sparkles, Verified, Settings, Share2, ChevronRight, Activity,
+  Verified, Settings, Share2, ChevronRight, Activity,
   AlertCircle, RefreshCw, CalendarDays, ChevronLeft, ChevronRight as ChevronRightIcon,
   Wallet, FileBadge, Moon, Sun,
 } from "lucide-react";
@@ -137,71 +137,18 @@ function AttendanceTab({ agentId, shiftTiming }: { agentId: string; shiftTiming?
   // Fetch attendance for the selected month
   const { data: monthRecords = [], isLoading, isError, error, refetch } = useAgentMonthAttendance(agentId, selectedMonth);
 
-  // Build a map of date → record for quick lookup
-  const recordsByDate = useMemo(() => {
-    const map = new Map<string, typeof monthRecords[number]>();
-    for (const r of monthRecords) map.set(r.date, r);
-    return map;
-  }, [monthRecords]);
-
-  // Compute the full month calendar with auto-fill:
-  // - If a record exists, use it
-  // - If no record exists and it's a weekday (Mon-Fri) and the day is in the past, auto-mark as "present"
-  //   (assumption: agent worked but forgot to clock in/out → count shift hours)
-  // - Weekends (Sat/Sun) are left empty (no auto-fill)
-  // - Future days are left empty
   const shiftHours = shiftExpectedHours(shiftTiming);
-  const calendar = useMemo(() => {
-    const [y, m] = selectedMonth.split("-").map(Number);
-    const daysInMonth = new Date(y!, m!, 0).getDate();
-    const todayISO = new Date().toISOString().slice(0, 10);
-    const list: Array<{
-      date: string;
-      day: number;
-      weekday: string;
-      record: typeof monthRecords[number] | null;
-      autoFilled: boolean;
-      hours: number;
-      status: string | null;
-    }> = [];
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dateStr = `${selectedMonth}-${String(d).padStart(2, "0")}`;
-      const dateObj = new Date(y!, m! - 1, d);
-      const weekday = dateObj.toLocaleDateString("en-US", { weekday: "short" });
-      const record = recordsByDate.get(dateStr) ?? null;
-      const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
-      const isFuture = dateStr > todayISO;
-      const isToday = dateStr === todayISO;
 
-      // Auto-fill logic: weekday, not future, not today, no existing record
-      const shouldAutoFill = !record && !isWeekend && !isFuture && !isToday;
-      const autoStatus = shouldAutoFill ? "present" : null;
-
-      const effectiveRecord = record ?? (shouldAutoFill ? { status: "present", clock_in: null, clock_out: null, total_hours: null } as typeof monthRecords[number] : null);
-      const hours = effectiveRecord ? effectiveHours(effectiveRecord, shiftTiming) : 0;
-
-      list.push({
-        date: dateStr,
-        day: d,
-        weekday,
-        record,
-        autoFilled: shouldAutoFill,
-        hours,
-        status: record?.status ?? autoStatus,
-      });
-    }
-    return list.reverse(); // most recent first
-  }, [selectedMonth, recordsByDate, monthRecords, shiftTiming]);
-
-  // Summary stats for the month
+  // Summary stats — based on ACTUAL records only (no auto-fill for agents)
   const counts = useMemo(() => {
     const c: Record<string, number> = { present: 0, absent: 0, late: 0, leave: 0, half_day: 0, holiday: 0, totalHours: 0 };
-    for (const day of calendar) {
-      if (day.status && day.status in c) c[day.status] = (c[day.status] ?? 0) + 1;
-      c["totalHours"]! += day.hours;
+    for (const r of monthRecords) {
+      if (r.status && r.status in c) c[r.status] = (c[r.status] ?? 0) + 1;
+      // Use clock-in/out hours when available, otherwise shift-based for present/late/half_day
+      c["totalHours"]! += effectiveHours(r, shiftTiming);
     }
     return c;
-  }, [calendar]);
+  }, [monthRecords, shiftTiming]);
 
   const summaryItems = [
     { label: "Present", value: counts["present"] ?? 0, color: "text-emerald-400", bg: "from-emerald-500/15 to-emerald-500/5", ring: "ring-emerald-500/20" },
@@ -273,16 +220,7 @@ function AttendanceTab({ agentId, shiftTiming }: { agentId: string; shiftTiming?
         ))}
       </div>
 
-      {/* Auto-fill notice */}
-      <div className="flex items-start gap-2 rounded-xl border border-info/20 bg-info/5 px-3 py-2 text-[11px] text-info/90">
-        <Sparkles className="mt-0.5 size-3.5 shrink-0" />
-        <span>
-          Missing weekdays are auto-filled as <strong>Present ({shiftHours}h)</strong> based on your shift.
-          Weekends and future dates are excluded. Leaves/holidays are never overwritten.
-        </span>
-      </div>
-
-      {/* Attendance list */}
+      {/* Attendance list — actual records only */}
       {isLoading ? (
         <p className="py-10 text-center text-sm text-muted-foreground">Loading attendance…</p>
       ) : isError ? (
@@ -295,8 +233,8 @@ function AttendanceTab({ agentId, shiftTiming }: { agentId: string; shiftTiming?
             <RefreshCw className="size-3.5" /> Retry
           </button>
         </div>
-      ) : calendar.length === 0 ? (
-        <p className="py-10 text-center text-sm text-muted-foreground">No attendance records yet.</p>
+      ) : monthRecords.length === 0 ? (
+        <p className="py-10 text-center text-sm text-muted-foreground">No attendance records for {monthLabel}.</p>
       ) : (
         <div className="overflow-hidden rounded-2xl border border-border/40">
           <div className="overflow-x-auto">
@@ -309,33 +247,30 @@ function AttendanceTab({ agentId, shiftTiming }: { agentId: string; shiftTiming?
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/20">
-                {calendar.map((row) => (
-                  <tr key={row.date} className={cn("transition-colors hover:bg-secondary/20", row.autoFilled && "bg-primary/[0.03]")}>
-                    <td className="px-4 py-2.5 font-mono text-xs">{formatDate(row.date)}</td>
-                    <td className="px-4 py-2.5 text-xs text-muted-foreground">{row.weekday}</td>
-                    <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
-                      {row.record?.clock_in ? formatTime(row.record.clock_in) : row.autoFilled ? <span className="text-primary/40">auto</span> : "—"}
-                    </td>
-                    <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
-                      {row.record?.clock_out ? formatTime(row.record.clock_out) : row.autoFilled ? <span className="text-primary/40">auto</span> : "—"}
-                    </td>
-                    <td className="px-4 py-2.5 font-mono text-xs">
-                      {row.hours > 0 ? (
-                        <span className={cn(row.autoFilled && "text-primary/70")}>{hoursLabel(row.hours)}</span>
-                      ) : "—"}
-                    </td>
-                    <td className="px-4 py-2.5">
-                      {row.status ? (
-                        <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold", STATUS_COLOR[row.status] ?? "", row.autoFilled && "ring-1 ring-primary/20")}>
+                {monthRecords.map((row) => {
+                  const dayName = new Date(row.date).toLocaleDateString("en-US", { weekday: "short" });
+                  const hrs = effectiveHours(row, shiftTiming);
+                  return (
+                    <tr key={row.id} className="transition-colors hover:bg-secondary/20">
+                      <td className="px-4 py-2.5 font-mono text-xs">{formatDate(row.date)}</td>
+                      <td className="px-4 py-2.5 text-xs text-muted-foreground">{dayName}</td>
+                      <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
+                        {row.clock_in ? formatTime(row.clock_in) : "—"}
+                      </td>
+                      <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
+                        {row.clock_out ? formatTime(row.clock_out) : "—"}
+                      </td>
+                      <td className="px-4 py-2.5 font-mono text-xs">
+                        {hrs > 0 ? hoursLabel(hrs) : "—"}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold", STATUS_COLOR[row.status] ?? "")}>
                           {labelize(row.status)}
-                          {row.autoFilled && <Sparkles className="size-2.5" />}
                         </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground/40">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

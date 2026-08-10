@@ -71,6 +71,7 @@ import { formatPKR, formatDate, initials } from "@/lib/billzo";
 import { SecureImage } from "@/components/billzo/SecureImage";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { effectiveHours, shiftExpectedHours } from "@/lib/shift";
 
 export const Route = createFileRoute("/_authenticated/reports/manage")({
   component: ManageReportsPage,
@@ -120,6 +121,90 @@ function toMonthInput(d: Date) {
 function toMonthDate(monthInput: string) {
   // YYYY-MM → YYYY-MM-01 (the date stored in DB)
   return `${monthInput}-01`;
+}
+
+/**
+ * Compute the attendance summary for a month, with AUTO-FILL of missing
+ * weekdays as "present" (using shift-based hours).
+ *
+ * Rules:
+ * - If a record exists for a day, use it (status + effective hours).
+ * - If NO record exists and the day is a weekday (Mon-Fri) and is in the past
+ *   (not today, not future), auto-mark as "present" with shift hours.
+ * - Weekends (Sat/Sun) are excluded — no auto-fill.
+ * - Today and future dates are excluded — no auto-fill.
+ * - Leaves / holidays / absents are NEVER overwritten (they exist as records).
+ *
+ * Returns { daysPresent, daysAbsent, daysLate, daysLeave, totalHours, autoFilledDays }
+ */
+function computeAttendanceWithAutoFill(
+  records: { date: string; status: string; clock_in: string | null; clock_out: string | null; total_hours: number | null }[],
+  monthInput: string,
+  shiftTiming: string | null | undefined,
+): {
+  daysPresent: number;
+  daysAbsent: number;
+  daysLate: number;
+  daysLeave: number;
+  totalHours: number;
+  autoFilledDays: number;
+} {
+  if (!monthInput || monthInput.length < 7) {
+    return { daysPresent: 0, daysAbsent: 0, daysLate: 0, daysLeave: 0, totalHours: 0, autoFilledDays: 0 };
+  }
+  const [y, m] = monthInput.split("-").map(Number);
+  if (!y || !m) return { daysPresent: 0, daysAbsent: 0, daysLate: 0, daysLeave: 0, totalHours: 0, autoFilledDays: 0 };
+
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const todayISO = new Date().toISOString().slice(0, 10);
+  const shiftHours = shiftExpectedHours(shiftTiming);
+
+  // Build a map of existing records by date
+  const recordsByDate = new Map<string, typeof records[number]>();
+  for (const r of records) recordsByDate.set(r.date, r);
+
+  let daysPresent = 0;
+  let daysAbsent = 0;
+  let daysLate = 0;
+  let daysLeave = 0;
+  let totalHours = 0;
+  let autoFilledDays = 0;
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${monthInput}-${String(d).padStart(2, "0")}`;
+    const dateObj = new Date(y, m - 1, d);
+    const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
+    const isFuture = dateStr > todayISO;
+    const isToday = dateStr === todayISO;
+
+    const existing = recordsByDate.get(dateStr);
+
+    if (existing) {
+      // Use the actual record
+      const hrs = effectiveHours(existing, shiftTiming);
+      totalHours += hrs;
+      if (existing.status === "present") daysPresent++;
+      else if (existing.status === "absent") daysAbsent++;
+      else if (existing.status === "late") daysLate++;
+      else if (existing.status === "leave") daysLeave++;
+      else if (existing.status === "half_day") {
+        daysPresent += 0.5; // count half_day as 0.5 present
+      }
+      // holiday → not counted in present/absent
+    } else if (!isWeekend && !isFuture && !isToday) {
+      // AUTO-FILL: missing weekday in the past → present + shift hours
+      daysPresent++;
+      totalHours += shiftHours;
+      autoFilledDays++;
+    }
+    // Weekends, today, and future days with no record → skipped (not counted)
+  }
+
+  // Round present to integer (half_day adds 0.5)
+  daysPresent = Math.round(daysPresent);
+  totalHours = Math.round(totalHours * 10) / 10;
+
+  return { daysPresent, daysAbsent, daysLate, daysLeave, totalHours, autoFilledDays };
 }
 
 // ── main page ──────────────────────────────────────────────────────────────
@@ -609,18 +694,25 @@ function ReportDialog({
       setValue("total_sales", 0, { shouldValidate: true });
     }
 
-    // Pre-fill attendance summary from the fetched attendance records
-    const daysPresent = monthAttendance.filter((r) => r.status === "present").length;
-    const daysAbsent = monthAttendance.filter((r) => r.status === "absent").length;
-    const daysLate = monthAttendance.filter((r) => r.status === "late").length;
-    const daysLeave = monthAttendance.filter((r) => r.status === "leave").length;
-    const totalHours = monthAttendance.reduce((s, r) => s + (r.total_hours ?? 0), 0);
+    // ── ATTENDANCE AUTO-FILL with shift-based hours + missing-weekday fill ──
+    // Uses computeAttendanceWithAutoFill():
+    //   - Existing records → use their status + effective hours (clock-in/out
+    //     when available, otherwise shift-based for present/late/half_day)
+    //   - Missing weekdays (Mon-Fri, past, not today) → auto-mark as present
+    //     with full shift hours (e.g. 9h for Morning/Night shifts)
+    //   - Weekends, today, future dates → skipped
+    //   - Leaves / holidays / absents → never overwritten (they're records)
+    const summary = computeAttendanceWithAutoFill(
+      monthAttendance as { date: string; status: string; clock_in: string | null; clock_out: string | null; total_hours: number | null }[],
+      monthValue,
+      selAgent?.shift_timing ?? null,
+    );
 
-    setValue("days_present", daysPresent, { shouldValidate: true });
-    setValue("days_absent", daysAbsent, { shouldValidate: true });
-    setValue("days_late", daysLate, { shouldValidate: true });
-    setValue("days_leave", daysLeave, { shouldValidate: true });
-    setValue("total_hours", Number(totalHours.toFixed(2)), { shouldValidate: true });
+    setValue("days_present", summary.daysPresent, { shouldValidate: true });
+    setValue("days_absent", summary.daysAbsent, { shouldValidate: true });
+    setValue("days_late", summary.daysLate, { shouldValidate: true });
+    setValue("days_leave", summary.daysLeave, { shouldValidate: true });
+    setValue("total_hours", summary.totalHours, { shouldValidate: true });
 
     // Pre-fill bonus + deductions from the salary ledger
     const bonusSum = ledgerEntries
@@ -633,9 +725,9 @@ function ReportDialog({
     setValue("deduction", Number(deductionSum.toFixed(2)), { shouldValidate: true });
 
     // Auto-set sentiment based on attendance ratio
-    const totalRecords = monthAttendance.length;
-    const presentRatio = totalRecords ? daysPresent / totalRecords : 0;
-    if (totalRecords > 0) {
+    const totalMarkedDays = summary.daysPresent + summary.daysAbsent + summary.daysLate + summary.daysLeave;
+    const presentRatio = totalMarkedDays ? summary.daysPresent / totalMarkedDays : 0;
+    if (totalMarkedDays > 0) {
       if (presentRatio >= 0.9) setValue("sentiment", "praise");
       else if (presentRatio >= 0.7) setValue("sentiment", "neutral");
       else if (presentRatio >= 0.5) setValue("sentiment", "improvement");
@@ -668,16 +760,18 @@ function ReportDialog({
     if (monthSales) {
       setValue("total_sales", Number(monthSales.amount), { shouldValidate: true });
     }
-    const daysPresent = monthAttendance.filter((r) => r.status === "present").length;
-    const daysAbsent = monthAttendance.filter((r) => r.status === "absent").length;
-    const daysLate = monthAttendance.filter((r) => r.status === "late").length;
-    const daysLeave = monthAttendance.filter((r) => r.status === "leave").length;
-    const totalHours = monthAttendance.reduce((s, r) => s + (r.total_hours ?? 0), 0);
-    setValue("days_present", daysPresent, { shouldValidate: true });
-    setValue("days_absent", daysAbsent, { shouldValidate: true });
-    setValue("days_late", daysLate, { shouldValidate: true });
-    setValue("days_leave", daysLeave, { shouldValidate: true });
-    setValue("total_hours", Number(totalHours.toFixed(2)), { shouldValidate: true });
+
+    // ── ATTENDANCE AUTO-FILL with shift-based hours + missing-weekday fill ──
+    const summary = computeAttendanceWithAutoFill(
+      monthAttendance as { date: string; status: string; clock_in: string | null; clock_out: string | null; total_hours: number | null }[],
+      monthValue,
+      selAgent.shift_timing ?? null,
+    );
+    setValue("days_present", summary.daysPresent, { shouldValidate: true });
+    setValue("days_absent", summary.daysAbsent, { shouldValidate: true });
+    setValue("days_late", summary.daysLate, { shouldValidate: true });
+    setValue("days_leave", summary.daysLeave, { shouldValidate: true });
+    setValue("total_hours", summary.totalHours, { shouldValidate: true });
 
     const bonusSum = ledgerEntries
       .filter((e) => e.entry_type === "bonus")
@@ -688,7 +782,16 @@ function ReportDialog({
     setValue("bonus", Number(bonusSum.toFixed(2)), { shouldValidate: true });
     setValue("deduction", Number(deductionSum.toFixed(2)), { shouldValidate: true });
 
-    toast.success("Auto-filled from existing data");
+    // Show a descriptive toast about what was auto-filled
+    const shiftH = shiftExpectedHours(selAgent.shift_timing);
+    if (summary.autoFilledDays > 0) {
+      toast.success(
+        `Auto-filled: ${summary.daysPresent} present (${summary.autoFilledDays} missing weekdays × ${shiftH}h), ${summary.totalHours.toFixed(0)}h total`,
+        { duration: 5000 },
+      );
+    } else {
+      toast.success(`Auto-filled from ${monthAttendance.length} attendance record(s)`);
+    }
     setAutoFilledKey(`${agentId}|${monthValue}`);
   }
 
@@ -702,11 +805,23 @@ function ReportDialog({
   const achPct = target ? (sales / target) * 100 : 0;
 
   // Auto-fill summary stats (what was found)
+  // Auto-fill summary stats (what was found + what was auto-filled)
+  const autoFillSummary = isCreating && selAgent && monthValue
+    ? computeAttendanceWithAutoFill(
+        monthAttendance as { date: string; status: string; clock_in: string | null; clock_out: string | null; total_hours: number | null }[],
+        monthValue,
+        selAgent.shift_timing ?? null,
+      )
+    : null;
   const autoFillStats = isCreating && selAgent && monthValue ? {
     attendanceRecords: monthAttendance.length,
     salesRecord: monthSales ? Number(monthSales.amount) : null,
     ledgerEntries: ledgerEntries.length,
     baseSalaryFromAgent: selAgent.salary ?? null,
+    shiftHours: shiftExpectedHours(selAgent.shift_timing),
+    autoFilledDays: autoFillSummary?.autoFilledDays ?? 0,
+    computedPresent: autoFillSummary?.daysPresent ?? 0,
+    computedHours: autoFillSummary?.totalHours ?? 0,
   } : null;
 
   return (
@@ -767,7 +882,7 @@ function ReportDialog({
                       {autoFillLoading
                         ? "Loading monthly data…"
                         : autoFillStats
-                          ? `Base salary · ${autoFillStats.attendanceRecords} attendance records · ${autoFillStats.ledgerEntries} ledger entries${autoFillStats.salesRecord != null ? ` · ₨${autoFillStats.salesRecord.toLocaleString()} sales` : ""}`
+                          ? `${autoFillStats.attendanceRecords} attendance records · ${autoFillStats.autoFilledDays} missing weekdays auto-filled × ${autoFillStats.shiftHours}h → ${autoFillStats.computedPresent} present · ${autoFillStats.computedHours.toFixed(0)}h total${autoFillStats.salesRecord != null ? ` · ₨${autoFillStats.salesRecord.toLocaleString()} sales` : ""}`
                           : "Pick an agent + month to auto-fill"}
                     </p>
                   </div>
