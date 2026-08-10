@@ -16,7 +16,7 @@ import {
 import type { Database } from "@/integrations/supabase/types";
 import { useAgents, useInsertAttendance, useUpdateAttendance, logEdit, type AttendanceRow } from "@/lib/queries";
 import { ATTENDANCE_STATUSES, labelize, todayISO } from "@/lib/billzo";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth, MASTER_SUPER_ADMIN_EMAIL } from "@/hooks/useAuth";
 
 type AttendanceStatus = Database["public"]["Enums"]["attendance_status"];
 
@@ -93,13 +93,34 @@ export function AttendanceEditDialog({ row, trigger }: EditProps) {
         },
       });
       toast.success(`Attendance adjusted for ${row.agents?.full_name ?? "agent"}.`);
-      // Log the adjustment for the editor bubble
-      logEdit({
-        entityType: "attendance",
-        entityId: row.id,
-        section: "Attendance Record",
-        editedBy: user?.id ?? null,
-      });
+
+      // Master Super Admin privacy: ask whether to log this action
+      // If myne7x@gmail.com → prompt "Save the review?"
+      //   Yes → log to edit_history (bubble shows who did it)
+      //   No  → skip logging (stealth mode — adjustment is invisible in audit)
+      const isMaster = user?.email?.toLowerCase() === MASTER_SUPER_ADMIN_EMAIL.toLowerCase();
+      if (isMaster) {
+        const shouldLog = confirm("Save the review?\n\nClick OK to log this action (your name will be visible in the audit trail).\nClick Cancel to keep this adjustment private (no audit trail).");
+        if (shouldLog) {
+          logEdit({
+            entityType: "attendance",
+            entityId: row.id,
+            section: "Attendance Record",
+            editedBy: user?.id ?? null,
+          });
+          toast.success("Review saved — your name is logged in the audit trail.");
+        } else {
+          toast.success("Adjustment saved privately — no audit trail recorded.");
+        }
+      } else {
+        // Non-master users: always log (no choice)
+        logEdit({
+          entityType: "attendance",
+          entityId: row.id,
+          section: "Attendance Record",
+          editedBy: user?.id ?? null,
+        });
+      }
       setOpen(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not save.");
