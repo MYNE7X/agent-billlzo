@@ -399,9 +399,12 @@ html, body {
   overscroll-behavior: none;
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
-  /* Prevent horizontal scroll on mobile caused by aurora blobs / cards */
+}
+
+/* Prevent horizontal scroll on mobile — but only on the body, not html,
+ * so that fixed-position elements (Sheet, Dialog, bottom nav) still work. */
+body {
   overflow-x: hidden;
-  max-width: 100vw;
 }
 
 /* Prevent iOS auto-zoom on input focus (inputs must be ≥ 16px) */
@@ -418,11 +421,6 @@ html, body {
     font-size: 16px !important;
   }
 }
-
-/* Ensure all flex/grid children respect their parent's width and truncate */
-main > * { min-width: 0; }
-.grid > * { min-width: 0; }
-.flex > * { min-width: 0; }
 
 html { scroll-behavior: smooth; }
 
