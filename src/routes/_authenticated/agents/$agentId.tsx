@@ -308,6 +308,7 @@ function AgentDetail() {
                   profile_picture_url: agent.profile_picture_url,
                   designation: (agent as unknown as { designations?: { name?: string } }).designations?.name,
                   department: (agent as unknown as { departments?: { name?: string } }).departments?.name,
+                  employee_type: agent.employee_type,
                   phone_number: agent.phone_number,
                   email: agent.email,
                   joining_date: agent.joining_date,
