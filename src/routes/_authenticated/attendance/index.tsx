@@ -871,17 +871,15 @@ function AttendanceTableRow({
       {isStaff && (
         <td className="px-4 py-3.5 text-right">
           <div className="flex items-center justify-end gap-1">
-            {/* Editor bubble — shows who last adjusted this record */}
-            {row.created_by && (
-              <EditorBubble
-                editedBy={row.created_by}
-                editedAt={row.updated_at}
-                entityType="attendance"
-                entityId={row.id}
-                section="Attendance Record"
-                label="Adjusted by"
-              />
-            )}
+            {/* Editor bubble — shows who created/adjusted this record */}
+            <EditorBubble
+              editedBy={row.created_by ?? null}
+              editedAt={row.updated_at ?? row.created_at}
+              entityType="attendance"
+              entityId={row.id}
+              section="Attendance Record"
+              label="Adjusted by"
+            />
             <AttendanceEditDialog
               row={row}
               trigger={

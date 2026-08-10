@@ -38,6 +38,10 @@ export function EditorBubble({
   const containerRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
 
+  // If no editedBy, still show the bubble — it displays "System" + the
+  // edit history (if any). This ensures every record has an audit indicator.
+  const effectiveEditedBy = editedBy ?? "__system__";
+
   // Detect touch device
   useEffect(() => {
     const check = () => setIsMobile(window.matchMedia("(hover: none)").matches || window.innerWidth < 1024);
@@ -48,13 +52,17 @@ export function EditorBubble({
 
   // Fetch user info when opened
   useEffect(() => {
-    if (!open || !editedBy || userInfo) return;
+    if (!open || userInfo) return;
+    if (effectiveEditedBy === "__system__") {
+      setUserInfo({ full_name: "System", email: "Auto-generated", avatar_url: null });
+      return;
+    }
     setLoading(true);
-    void fetchUserInfo(editedBy).then((info) => {
+    void fetchUserInfo(effectiveEditedBy).then((info) => {
       setUserInfo(info);
       setLoading(false);
     });
-  }, [open, editedBy, userInfo]);
+  }, [open, effectiveEditedBy, userInfo]);
 
   // Close on outside click (mobile)
   useEffect(() => {
@@ -72,7 +80,9 @@ export function EditorBubble({
     };
   }, [open, isMobile]);
 
-  if (!editedBy) return null;
+  // If no editedBy, still show the bubble — it displays "System" + the
+  // edit history (if any). This ensures every record has an audit indicator.
+  // (moved above — effectiveEditedBy is declared at line 43)
 
   return (
     <div
