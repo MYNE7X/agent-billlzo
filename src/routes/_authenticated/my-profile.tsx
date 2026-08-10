@@ -77,6 +77,7 @@ const STATUS_COLOR: Record<string, string> = {
   half_day: "bg-blue-500/15 text-blue-400 ring-1 ring-blue-500/25",
   leave: "bg-violet-500/15 text-violet-400 ring-1 ring-violet-500/25",
   holiday: "bg-cyan-500/15 text-cyan-400 ring-1 ring-cyan-500/25",
+  weekly_off: "bg-violet-500/15 text-violet-400 ring-1 ring-violet-500/25",
 };
 
 // ── one-time upload button ────────────────────────────────────────────────────
@@ -870,6 +871,7 @@ function MyProfilePage() {
           {/* quick tags */}
           <div className="mt-3 flex flex-wrap gap-2">
             {([
+              [Building2, agent.offices?.office_name ?? null],
               [Clock, agent.shift_timing],
               [Briefcase, agent.employee_type ? labelize(agent.employee_type) : null],
               [MapPin, [agent.city, agent.country].filter(Boolean).join(", ") || null],
@@ -953,6 +955,7 @@ function MyProfilePage() {
           <div className="grid gap-2.5 sm:grid-cols-2">
             <InfoRow icon={Building2} label="Department" value={dept} />
             <InfoRow icon={Briefcase} label="Designation" value={desig} />
+            <InfoRow icon={Building2} label="Office" value={agent.offices?.office_name ?? null} />
             <InfoRow icon={Calendar} label="Joining Date" value={formatDate(agent.joining_date)} />
             <InfoRow icon={Briefcase} label="Employee Type" value={labelize(agent.employee_type)} />
             <InfoRow icon={Clock} label="Shift Timing" value={agent.shift_timing} />

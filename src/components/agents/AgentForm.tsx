@@ -31,6 +31,7 @@ import {
 import {
   useDepartments,
   useDesignations,
+  useOffices,
   useStaffProfiles,
   type AgentWithRefs,
 } from "@/lib/queries";
@@ -61,6 +62,7 @@ type AgentFormState = {
   country: string;
   department_id: string;
   designation_id: string;
+  office_id: string;
   joining_date: string;
   employee_type: string;
   shift_timing: string;
@@ -121,6 +123,7 @@ export function AgentForm({
   const { user } = useAuth();
   const { data: departments } = useDepartments();
   const { data: designations } = useDesignations();
+  const { data: offices } = useOffices("active");
   const { data: staff } = useStaffProfiles();
   const admins = (staff ?? []).filter(
     (s) => s.roles.includes("admin") || s.roles.includes("super_admin"),
@@ -150,6 +153,7 @@ export function AgentForm({
     country: agent?.country ?? "Pakistan",
     department_id: agent?.department_id ?? "",
     designation_id: agent?.designation_id ?? "",
+    office_id: agent?.office_id ?? "",
     joining_date: agent?.joining_date ?? "",
     employee_type: agent?.employee_type ?? "",
     shift_timing: agent?.shift_timing ?? "",
@@ -210,6 +214,7 @@ export function AgentForm({
     const employmentKeys = new Set([
       "department_id",
       "designation_id",
+      "office_id",
       "joining_date",
       "employee_type",
       "shift_timing",
@@ -459,6 +464,25 @@ export function AgentForm({
                   {(designations ?? []).map((d) => (
                     <SelectItem key={d.id} value={d.id}>
                       {d.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label="Office">
+              <Select
+                disabled={Boolean(readOnlyEmployment)}
+                value={values.office_id || NONE}
+                onValueChange={(v) => set("office_id", v === NONE ? "" : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Office not assigned" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NONE}>— Not Assigned —</SelectItem>
+                  {(offices ?? []).map((o) => (
+                    <SelectItem key={o.id} value={o.id}>
+                      {o.office_name} ({o.office_code})
                     </SelectItem>
                   ))}
                 </SelectContent>

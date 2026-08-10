@@ -16,6 +16,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedExpensesRouteImport } from './routes/_authenticated/expenses'
 import { Route as AuthenticatedMyProfileRouteImport } from './routes/_authenticated/my-profile'
 import { Route as AuthenticatedNetworkSettingsRouteImport } from './routes/_authenticated/network-settings'
+import { Route as AuthenticatedOfficesRouteImport } from './routes/_authenticated/offices'
 import { Route as AuthenticatedPendingApprovalsRouteImport } from './routes/_authenticated/pending-approvals'
 import { Route as AuthenticatedAgentsIndexRouteImport } from './routes/_authenticated/agents/index'
 import { Route as AuthenticatedAgentsAgentIdRouteImport } from './routes/_authenticated/agents/$agentId'
@@ -59,6 +60,11 @@ const AuthenticatedNetworkSettingsRoute =
     path: '/network-settings',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedOfficesRoute = AuthenticatedOfficesRouteImport.update({
+  id: '/offices',
+  path: '/offices',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedPendingApprovalsRoute =
   AuthenticatedPendingApprovalsRouteImport.update({
     id: '/pending-approvals',
@@ -108,6 +114,7 @@ export interface FileRoutesByFullPath {
   '/expenses': typeof AuthenticatedExpensesRoute
   '/my-profile': typeof AuthenticatedMyProfileRoute
   '/network-settings': typeof AuthenticatedNetworkSettingsRoute
+  '/offices': typeof AuthenticatedOfficesRoute
   '/pending-approvals': typeof AuthenticatedPendingApprovalsRoute
   '/agents/$agentId': typeof AuthenticatedAgentsAgentIdRoute
   '/agents/new': typeof AuthenticatedAgentsNewRoute
@@ -123,6 +130,7 @@ export interface FileRoutesByTo {
   '/expenses': typeof AuthenticatedExpensesRoute
   '/my-profile': typeof AuthenticatedMyProfileRoute
   '/network-settings': typeof AuthenticatedNetworkSettingsRoute
+  '/offices': typeof AuthenticatedOfficesRoute
   '/pending-approvals': typeof AuthenticatedPendingApprovalsRoute
   '/agents/$agentId': typeof AuthenticatedAgentsAgentIdRoute
   '/agents/new': typeof AuthenticatedAgentsNewRoute
@@ -140,6 +148,7 @@ export interface FileRoutesById {
   '/_authenticated/expenses': typeof AuthenticatedExpensesRoute
   '/_authenticated/my-profile': typeof AuthenticatedMyProfileRoute
   '/_authenticated/network-settings': typeof AuthenticatedNetworkSettingsRoute
+  '/_authenticated/offices': typeof AuthenticatedOfficesRoute
   '/_authenticated/pending-approvals': typeof AuthenticatedPendingApprovalsRoute
   '/_authenticated/agents/$agentId': typeof AuthenticatedAgentsAgentIdRoute
   '/_authenticated/agents/new': typeof AuthenticatedAgentsNewRoute
@@ -157,6 +166,7 @@ export interface FileRouteTypes {
     | '/expenses'
     | '/my-profile'
     | '/network-settings'
+    | '/offices'
     | '/pending-approvals'
     | '/agents/$agentId'
     | '/agents/new'
@@ -172,6 +182,7 @@ export interface FileRouteTypes {
     | '/expenses'
     | '/my-profile'
     | '/network-settings'
+    | '/offices'
     | '/pending-approvals'
     | '/agents/$agentId'
     | '/agents/new'
@@ -188,6 +199,7 @@ export interface FileRouteTypes {
     | '/_authenticated/expenses'
     | '/_authenticated/my-profile'
     | '/_authenticated/network-settings'
+    | '/_authenticated/offices'
     | '/_authenticated/pending-approvals'
     | '/_authenticated/agents/$agentId'
     | '/_authenticated/agents/new'
@@ -253,6 +265,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedNetworkSettingsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/offices': {
+      id: '/_authenticated/offices'
+      path: '/offices'
+      fullPath: '/offices'
+      preLoaderRoute: typeof AuthenticatedOfficesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/pending-approvals': {
       id: '/_authenticated/pending-approvals'
       path: '/pending-approvals'
@@ -311,6 +330,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedExpensesRoute: typeof AuthenticatedExpensesRoute
   AuthenticatedMyProfileRoute: typeof AuthenticatedMyProfileRoute
   AuthenticatedNetworkSettingsRoute: typeof AuthenticatedNetworkSettingsRoute
+  AuthenticatedOfficesRoute: typeof AuthenticatedOfficesRoute
   AuthenticatedPendingApprovalsRoute: typeof AuthenticatedPendingApprovalsRoute
   AuthenticatedAgentsAgentIdRoute: typeof AuthenticatedAgentsAgentIdRoute
   AuthenticatedAgentsNewRoute: typeof AuthenticatedAgentsNewRoute
@@ -326,6 +346,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedExpensesRoute: AuthenticatedExpensesRoute,
   AuthenticatedMyProfileRoute: AuthenticatedMyProfileRoute,
   AuthenticatedNetworkSettingsRoute: AuthenticatedNetworkSettingsRoute,
+  AuthenticatedOfficesRoute: AuthenticatedOfficesRoute,
   AuthenticatedPendingApprovalsRoute: AuthenticatedPendingApprovalsRoute,
   AuthenticatedAgentsAgentIdRoute: AuthenticatedAgentsAgentIdRoute,
   AuthenticatedAgentsNewRoute: AuthenticatedAgentsNewRoute,

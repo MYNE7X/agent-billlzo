@@ -9,6 +9,7 @@ const TONES: Record<string, { wrapper: string; dot: string; ping?: boolean }> = 
   leave:       { wrapper: "bg-info/15 text-info border-info/30",                     dot: "bg-info" },
   late:        { wrapper: "bg-warning/15 text-warning border-warning/30",            dot: "bg-warning",     ping: true },
   half_day:    { wrapper: "bg-warning/15 text-warning border-warning/30",            dot: "bg-warning" },
+  weekly_off:  { wrapper: "bg-violet-500/15 text-violet-400 border-violet-500/30",   dot: "bg-violet-400" },
   suspended:   { wrapper: "bg-destructive/15 text-destructive border-destructive/30", dot: "bg-destructive", ping: true },
   absent:      { wrapper: "bg-destructive/15 text-destructive border-destructive/30", dot: "bg-destructive" },
   resigned:    { wrapper: "bg-destructive/10 text-destructive border-destructive/25", dot: "bg-destructive/60" },

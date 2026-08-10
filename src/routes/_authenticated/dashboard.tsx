@@ -77,6 +77,7 @@ const STATUS_ICON: Record<string, { icon: typeof CheckCircle2; color: string }> 
   half_day: { icon: MinusCircle, color: "text-blue-400" },
   leave: { icon: PlaneTakeoff, color: "text-violet-400" },
   holiday: { icon: Sun, color: "text-cyan-400" },
+  weekly_off: { icon: Moon, color: "text-violet-400" },
 };
 
 const STATUS_BG: Record<string, string> = {
@@ -86,6 +87,7 @@ const STATUS_BG: Record<string, string> = {
   half_day: "from-blue-500/12 to-blue-500/5        border-blue-500/20",
   leave: "from-violet-500/12 to-violet-500/5    border-violet-500/20",
   holiday: "from-cyan-500/12 to-cyan-500/5        border-cyan-500/20",
+  weekly_off: "from-violet-500/12 to-violet-500/5  border-violet-500/20",
 };
 
 function getGreeting() {

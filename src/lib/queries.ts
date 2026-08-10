@@ -7,13 +7,15 @@ export type AgentInsert = Database["public"]["Tables"]["agents"]["Insert"];
 export type AgentUpdate = Database["public"]["Tables"]["agents"]["Update"];
 export type AgentDocument = Database["public"]["Tables"]["agent_documents"]["Row"];
 export type Attendance = Database["public"]["Tables"]["attendance"]["Row"];
+export type Office = Database["public"]["Tables"]["offices"]["Row"];
 
 export type AgentWithRefs = Agent & {
   departments: { id: string; name: string } | null;
   designations: { id: string; name: string } | null;
+  offices: { id: string; office_name: string; office_code: string; location: string | null } | null;
 };
 
-const AGENT_SELECT = "*, departments:department_id(id,name), designations:designation_id(id,name)";
+const AGENT_SELECT = "*, departments:department_id(id,name), designations:designation_id(id,name), offices:office_id(id,office_name,office_code,location)";
 
 export function useDepartments() {
   return useQuery({
@@ -960,6 +962,162 @@ export function useDeleteReport() {
     onSuccess: (_d, vars) => {
       void qc.invalidateQueries({ queryKey: ["agent-reports", vars.agentId] });
       void qc.invalidateQueries({ queryKey: ["all-reports"] });
+    },
+  });
+}
+
+// ============================================================================
+// OFFICES — CRUD + agent-count
+// ============================================================================
+
+export function useOffices(statusFilter?: "active" | "inactive") {
+  return useQuery({
+    queryKey: ["offices", statusFilter ?? "all"],
+    queryFn: async () => {
+      let q = supabase
+        .from("offices")
+        .select("*")
+        .order("office_name", { ascending: true });
+      if (statusFilter) q = q.eq("status", statusFilter);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []) as Office[];
+    },
+  });
+}
+
+/** Offices + agent count per office (single RPC-free query). */
+export function useOfficesWithCounts(statusFilter?: "active" | "inactive") {
+  return useQuery({
+    queryKey: ["offices-with-counts", statusFilter ?? "all"],
+    queryFn: async () => {
+      let q = supabase
+        .from("offices")
+        .select("*, agents!office_id(id)")
+        .order("office_name", { ascending: true });
+      if (statusFilter) q = q.eq("status", statusFilter);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []).map((o) => {
+        const agents = (o as unknown as { agents?: unknown[] }).agents;
+        return {
+          ...o,
+          agent_count: Array.isArray(agents) ? agents.length : 0,
+        };
+      }) as (Office & { agent_count: number })[];
+    },
+  });
+}
+
+export function useUpsertOffice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      id?: string;
+      office_name: string;
+      office_code: string;
+      location?: string | null;
+      description?: string | null;
+      status?: string;
+      created_by?: string | null;
+    }) => {
+      const { data, error } = await supabase
+        .from("offices")
+        .upsert({
+          id: input.id,
+          office_name: input.office_name,
+          office_code: input.office_code,
+          location: input.location ?? null,
+          description: input.description ?? null,
+          status: input.status ?? "active",
+          created_by: input.created_by ?? null,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data as Office;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["offices"] });
+      void qc.invalidateQueries({ queryKey: ["offices-with-counts"] });
+      void qc.invalidateQueries({ queryKey: ["agents"] });
+    },
+  });
+}
+
+export function useDeleteOffice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("offices").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["offices"] });
+      void qc.invalidateQueries({ queryKey: ["offices-with-counts"] });
+      void qc.invalidateQueries({ queryKey: ["agents"] });
+    },
+  });
+}
+
+/** Toggle an office between active / inactive. */
+export function useToggleOfficeStatus() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: "active" | "inactive" }) => {
+      const { data, error } = await supabase
+        .from("offices")
+        .update({ status })
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as Office;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["offices"] });
+      void qc.invalidateQueries({ queryKey: ["offices-with-counts"] });
+    },
+  });
+}
+
+/** Assign an office to an agent (admin/super_admin only). */
+export function useAssignAgentOffice() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ agentId, officeId }: { agentId: string; officeId: string | null }) => {
+      const { data, error } = await supabase
+        .from("agents")
+        .update({ office_id: officeId })
+        .eq("id", agentId)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["agents"] });
+      void qc.invalidateQueries({ queryKey: ["offices-with-counts"] });
+    },
+  });
+}
+
+/** Toggle the employee_id_locked flag (super_admin only). */
+export function useToggleEmployeeIdLock() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ agentId, locked }: { agentId: string; locked: boolean }) => {
+      const { data, error } = await supabase
+        .from("agents")
+        .update({ employee_id_locked: locked })
+        .eq("id", agentId)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["agents"] });
     },
   });
 }

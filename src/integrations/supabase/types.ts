@@ -44,6 +44,50 @@ export type Database = {
         }
         Relationships: []
       }
+      offices: {
+        Row: {
+          id: string
+          office_name: string
+          office_code: string
+          location: string | null
+          description: string | null
+          status: string
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          office_name: string
+          office_code: string
+          location?: string | null
+          description?: string | null
+          status?: string
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          office_name?: string
+          office_code?: string
+          location?: string | null
+          description?: string | null
+          status?: string
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offices_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       office_expenses: {
         Row: {
           id: string
@@ -298,6 +342,7 @@ export type Database = {
           emergency_contact_name: string | null
           emergency_contact_number: string | null
           employee_id: string
+          employee_id_locked: boolean
           employee_type: string | null
           father_name: string | null
           full_name: string
@@ -311,6 +356,7 @@ export type Database = {
           languages: string | null
           marital_status: string | null
           notes: string | null
+          office_id: string | null
           passport_number: string | null
           passport_url: string | null
           phone_number: string | null
@@ -349,6 +395,7 @@ export type Database = {
           emergency_contact_name?: string | null
           emergency_contact_number?: string | null
           employee_id: string
+          employee_id_locked?: boolean
           employee_type?: string | null
           father_name?: string | null
           full_name: string
@@ -362,6 +409,7 @@ export type Database = {
           languages?: string | null
           marital_status?: string | null
           notes?: string | null
+          office_id?: string | null
           passport_number?: string | null
           passport_url?: string | null
           phone_number?: string | null
@@ -400,6 +448,7 @@ export type Database = {
           emergency_contact_name?: string | null
           emergency_contact_number?: string | null
           employee_id?: string
+          employee_id_locked?: boolean
           employee_type?: string | null
           father_name?: string | null
           full_name?: string
@@ -413,6 +462,7 @@ export type Database = {
           languages?: string | null
           marital_status?: string | null
           notes?: string | null
+          office_id?: string | null
           passport_number?: string | null
           passport_url?: string | null
           phone_number?: string | null
@@ -456,7 +506,9 @@ export type Database = {
           date: string
           id: string
           notes: string | null
+          office_id: string | null
           status: Database["public"]["Enums"]["attendance_status"]
+          system_generated: boolean
           total_hours: number | null
           updated_at: string
         }
@@ -469,7 +521,9 @@ export type Database = {
           date?: string
           id?: string
           notes?: string | null
+          office_id?: string | null
           status?: Database["public"]["Enums"]["attendance_status"]
+          system_generated?: boolean
           total_hours?: number | null
           updated_at?: string
         }
@@ -482,7 +536,9 @@ export type Database = {
           date?: string
           id?: string
           notes?: string | null
+          office_id?: string | null
           status?: Database["public"]["Enums"]["attendance_status"]
+          system_generated?: boolean
           total_hours?: number | null
           updated_at?: string
         }
@@ -630,6 +686,7 @@ export type Database = {
         | "half_day"
         | "leave"
         | "holiday"
+        | "weekly_off"
     }
     CompositeTypes: {
       [_ in never]: never

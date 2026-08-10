@@ -10,7 +10,7 @@ export const SHIFT_TIMINGS = [
   "Flexible",
 ] as const;
 export const AGENT_STATUSES = ["active", "inactive", "suspended", "resigned"] as const;
-export const ATTENDANCE_STATUSES = ["present", "absent", "late", "half_day", "leave", "holiday"] as const;
+export const ATTENDANCE_STATUSES = ["present", "absent", "late", "half_day", "leave", "holiday", "weekly_off"] as const;
 export const PROVINCES = [
   "Punjab",
   "Sindh",
@@ -66,4 +66,15 @@ export const hoursLabel = (h?: number | null) => {
   // doesn't display "-15.00 h".
   const safe = n < 0 ? Math.abs(n) : n;
   return `${safe.toFixed(2)} h`;
+};
+
+/** Returns true if the given date string (YYYY-MM-DD) is a Sunday. */
+export const isSunday = (dateStr: string): boolean => {
+  const d = new Date(dateStr + "T00:00:00");
+  return d.getDay() === 0;
+};
+
+/** Returns true if the attendance record is a system-generated Sunday weekly off. */
+export const isWeeklyOff = (record: { status?: string | null; system_generated?: boolean | null }): boolean => {
+  return record.status === "weekly_off" || (Boolean(record.system_generated) && record.status === "weekly_off");
 };

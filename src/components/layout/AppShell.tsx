@@ -16,6 +16,7 @@ import {
   Home,
   Search,
   Command,
+  Building2,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,7 @@ const NAV: NavItem[] = [
   { to: "/attendance", label: "Attendance", shortLabel: "Punch", icon: CalendarCheck, staffOnly: true },
   { to: "/reports", label: "Reports", shortLabel: "Reports", icon: BarChart3 },
   { to: "/agents", label: "Agents", shortLabel: "Agents", icon: Users, staffOnly: true },
+  { to: "/offices", label: "Offices", shortLabel: "Offices", icon: Building2, staffOnly: true },
   { to: "/expenses", label: "Expenses", shortLabel: "Expenses", icon: Receipt, staffOnly: true },
   { to: "/pending-approvals", label: "Pending", shortLabel: "Pending", icon: UserCog, staffOnly: true },
   { to: "/network-settings", label: "Network", shortLabel: "Network", icon: Wifi, staffOnly: true },
