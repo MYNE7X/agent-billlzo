@@ -533,7 +533,7 @@ function AgentsPage() {
       </header>
 
       {/* ── Quick stat strip ── */}
-      <div className="animate-rise grid grid-cols-3 gap-3">
+      <div className="animate-rise grid grid-cols-3 gap-2 sm:gap-3">
         {[
           {
             label: "Total",

@@ -15,7 +15,6 @@ import {
   BarChart3,
   ChevronRight,
   Home,
-  Settings2,
   Search,
   Command,
 } from "lucide-react";
@@ -240,31 +239,25 @@ export function AppShell({ children }: { children: ReactNode }) {
       ? "admin"
       : "agent";
 
-  const profileItem = items.find((i) => i.to === "/my-profile")!;
+  // ── MOBILE BOTTOM NAV — exactly 4 fixed slots, no "More" button ────────
+  // Slot 1: Home (always)
+  // Slot 2: Reports (always — available to all roles)
+  // Slot 3: Attendance (staff) OR Profile (agent)
+  // Slot 4: Me (Profile) — always last
+  //
+  // Everything else is reachable via the hamburger menu (top-left).
+  // This guarantees consistent 4-slot layout on every phone, no overlap.
   const dashboardItem = items.find((i) => i.to === "/dashboard")!;
   const reportsItem = items.find((i) => i.to === "/reports");
-  const middleItems = items.filter(
-    (i) => i.to !== "/my-profile" && i.to !== "/dashboard" && i.to !== "/reports",
-  );
+  const attendanceItem = items.find((i) => i.to === "/attendance");
+  const profileItem = items.find((i) => i.to === "/my-profile")!;
 
-  const bottomSlots: (NavItem | { isMore: true })[] = [];
-  bottomSlots.push(dashboardItem);
-  if (reportsItem) {
-    bottomSlots.push(reportsItem);
-  } else if (middleItems[0]) {
-    bottomSlots.push(middleItems[0]);
-  }
-  const usedTos = new Set(bottomSlots.map((s) => ("to" in s ? s.to : "")));
-  const leftover = items.filter((i) => !usedTos.has(i.to) && i.to !== "/my-profile");
-  if (leftover.length > 0) {
-    bottomSlots.push({ isMore: true });
-  } else if (middleItems[1] && !reportsItem) {
-    bottomSlots.push(middleItems[1]);
-  } else if (middleItems[0] && reportsItem && !usedTos.has(middleItems[0].to)) {
-    bottomSlots.push(middleItems[0]);
-  }
-  bottomSlots.push(profileItem);
-  const finalSlots = bottomSlots.slice(0, 5);
+  const mobileSlots: NavItem[] = [
+    dashboardItem,
+    ...(reportsItem ? [reportsItem] : []),
+    ...(attendanceItem ? [attendanceItem] : []),
+    profileItem,
+  ].filter(Boolean) as NavItem[];
 
   const handleSignOut = async () => {
     setSheetOpen(false);
@@ -297,17 +290,20 @@ export function AppShell({ children }: { children: ReactNode }) {
         className="glass safe-top fixed inset-x-0 top-0 z-30 border-b border-border/40 lg:hidden"
         style={{ paddingBottom: "8px" }}
       >
-        <div className="flex h-14 items-center gap-2 px-4">
+        <div className="flex h-14 items-center gap-2 px-3 sm:px-4">
+          {/* Hamburger — opens sheet with ALL nav items */}
           <button
             onClick={() => setSheetOpen(true)}
-            className="grid size-9 place-items-center rounded-xl bg-secondary/40 text-muted-foreground transition-colors hover:bg-secondary/70 hover:text-foreground active:scale-95"
+            className="grid size-9 shrink-0 place-items-center rounded-xl bg-secondary/40 text-muted-foreground transition-colors hover:bg-secondary/70 hover:text-foreground active:scale-95"
             aria-label="Open menu"
           >
-            <Settings2 className="size-4.5" />
+            <svg viewBox="0 0 24 24" fill="none" className="size-4.5" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+              <path d="M4 7h16M4 12h16M4 17h16" />
+            </svg>
           </button>
 
-          <Link to="/dashboard" className="flex items-center gap-2">
-            <span className="relative grid size-7 place-items-center overflow-hidden rounded-lg">
+          <Link to="/dashboard" className="flex min-w-0 items-center gap-2">
+            <span className="relative grid size-7 shrink-0 place-items-center overflow-hidden rounded-lg">
               <span className="absolute inset-0 bg-gradient-to-br from-primary via-cyan-400 to-fuchsia-500 opacity-95" />
               <Building2 className="relative size-3.5 text-background" strokeWidth={2.5} />
             </span>
@@ -316,13 +312,15 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <div className="flex-1" />
 
-          <span className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
+          {/* Role pill — hidden on very narrow screens (≤400px) to avoid overflow */}
+          <span className="hidden rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-primary min-[400px]:inline-block">
             {labelize(primaryRole)}
           </span>
 
+          {/* Avatar shortcut */}
           <Link
             to="/my-profile"
-            className="grid size-9 place-items-center overflow-hidden rounded-full ring-2 ring-primary/30 ring-offset-1 ring-offset-background active:scale-95"
+            className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-full ring-2 ring-primary/30 ring-offset-1 ring-offset-background active:scale-95"
           >
             <Avatar className="size-full">
               <AvatarFallback className="bg-gradient-to-br from-primary/30 to-fuchsia-500/20 text-[10px] font-bold text-primary">
@@ -333,9 +331,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </header>
 
-      {/* ── mobile sheet menu (the "more" drawer) ────────────────────────── */}
+      {/* ── mobile sheet menu (the full nav drawer) ─────────────────────── */}
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-        <SheetContent side="left" className="w-[300px] border-border/40 bg-sidebar/95 p-0">
+        <SheetContent side="left" className="w-[300px] max-w-[85vw] border-border/40 bg-sidebar/95 p-0">
           <SheetHeader className="px-4 pt-4">
             <SheetTitle className="text-left text-base font-semibold">Menu</SheetTitle>
           </SheetHeader>
@@ -374,8 +372,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           </span>
         </header>
 
+        {/* ── main content area ────────────────────────────────────────────
+         * Mobile:  pt-16 (top header 56px + safe area)
+         *          pb-28 (bottom nav 64px + safe area + breathing room)
+         * Desktop: pt-0 (sticky header is in-flow) + pb-10
+         */}
         <main
-          className="surface-grid relative min-h-screen px-4 pt-14 pb-28 sm:px-5 lg:px-8 lg:pt-6 lg:pb-10"
+          className="surface-grid relative min-h-screen px-3 pb-28 pt-16 sm:px-5 lg:px-8 lg:pb-10 lg:pt-6"
         >
           {/* Aurora ambient blobs — fixed within main column */}
           <div
@@ -386,47 +389,34 @@ export function AppShell({ children }: { children: ReactNode }) {
         </main>
       </div>
 
-      {/* ── mobile bottom tab bar ────────────────────────────────────────── */}
+      {/* ── mobile bottom tab bar — fixed 4 slots, no overlap ──────────────
+       * Each slot uses flex-1 with min-w-0 to guarantee equal widths and
+       * prevent overflow on narrow phones (≤ 320px).
+       */}
       <nav
         className="glass safe-bottom shadow-bar fixed inset-x-0 bottom-0 z-40 border-t border-border/40 lg:hidden"
-        style={{ paddingTop: "6px" }}
       >
-        <div className="mx-auto flex max-w-md items-stretch justify-around px-2">
-          {finalSlots.map((slot, idx) => {
-            if ("isMore" in slot) {
-              return (
-                <button
-                  key={`more-${idx}`}
-                  onClick={() => setSheetOpen(true)}
-                  className="group relative flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-muted-foreground transition-colors active:scale-95"
-                  aria-label="More"
-                >
-                  <span className="grid size-9 place-items-center rounded-xl bg-secondary/40 transition-all duration-200 group-active:bg-primary/15 group-active:text-primary">
-                    <Settings2 className="size-4.5" />
-                  </span>
-                  <span className="text-[9px] font-semibold leading-none tracking-wide">More</span>
-                </button>
-              );
-            }
-            const item = slot;
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                activeProps={{ className: "is-active" }}
-                className="group relative flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-muted-foreground transition-colors active:scale-95"
-              >
-                {/* active top pill — gradient */}
-                <span className="absolute -top-[6px] h-0.5 w-8 rounded-full bg-gradient-to-r from-primary to-fuchsia-500 opacity-0 transition-opacity duration-200 [.is-active_&]:opacity-100" />
-                <span className="grid size-9 place-items-center rounded-xl bg-transparent transition-all duration-200 group-hover:bg-secondary/40 [.is-active_&]:bg-primary/15 [.is-active_&]:text-primary [.is-active_&]:shadow-pop-primary">
-                  <item.icon className="size-4.5 transition-transform duration-200 group-active:scale-90 [.is-active_&]:scale-110" strokeWidth={2.2} />
-                </span>
-                <span className="text-[9px] font-semibold leading-none tracking-wide [.is-active_&]:text-primary">
-                  {item.shortLabel ?? item.label}
-                </span>
-              </Link>
-            );
-          })}
+        <div className="mx-auto flex max-w-md items-stretch justify-around gap-1 px-2 pb-1 pt-2">
+          {mobileSlots.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              activeProps={{ className: "is-active" }}
+              className="group relative flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-lg py-1 text-muted-foreground transition-colors active:scale-95"
+            >
+              {/* active top pill — gradient */}
+              <span className="absolute -top-2 h-0.5 w-8 rounded-full bg-gradient-to-r from-primary to-fuchsia-500 opacity-0 transition-opacity duration-200 [.is-active_&]:opacity-100" />
+              <span className="grid size-9 place-items-center rounded-xl bg-transparent transition-all duration-200 group-hover:bg-secondary/40 [.is-active_&]:bg-primary/15 [.is-active_&]:text-primary [.is-active_&]:shadow-pop-primary">
+                <item.icon
+                  className="size-5 transition-transform duration-200 group-active:scale-90 [.is-active_&]:scale-110"
+                  strokeWidth={2.2}
+                />
+              </span>
+              <span className="max-w-full truncate text-[10px] font-semibold leading-none tracking-wide [.is-active_&]:text-primary">
+                {item.shortLabel ?? item.label}
+              </span>
+            </Link>
+          ))}
         </div>
       </nav>
     </div>

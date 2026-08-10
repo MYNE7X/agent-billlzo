@@ -150,8 +150,8 @@ function AuthPage() {
       </section>
 
       {/* ── Right auth panel ──────────────────────────────────────────────── */}
-      <section className="relative flex items-center justify-center p-6">
-        <div className="aurora-border glass animate-rise relative w-full max-w-md rounded-3xl p-8">
+      <section className="relative flex items-center justify-center p-4 sm:p-6">
+        <div className="aurora-border glass animate-rise relative w-full max-w-md rounded-3xl p-6 sm:p-8">
           <span className="aurora-border-ring" />
           {/* Mobile brand */}
           <div className="mb-6 flex items-center gap-3 lg:hidden">
@@ -165,12 +165,12 @@ function AuthPage() {
             </div>
           </div>
 
-          <h2 className="font-display relative text-3xl font-bold tracking-tight">Sign in to your workspace</h2>
+          <h2 className="font-display relative text-2xl font-bold tracking-tight sm:text-3xl">Sign in to your workspace</h2>
           <p className="relative mt-1.5 text-sm text-muted-foreground">
             The first account created becomes the Super Admin.
           </p>
 
-          <Tabs defaultValue="signin" className="relative mt-6">
+          <Tabs defaultValue="signin" className="relative mt-5 sm:mt-6">
             <TabsList className="grid w-full grid-cols-2 bg-secondary/60">
               <TabsTrigger value="signin">Sign In</TabsTrigger>
               <TabsTrigger value="signup">Create Account</TabsTrigger>

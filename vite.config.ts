@@ -15,5 +15,17 @@ export default defineConfig({
     host: "0.0.0.0",
     port: 5000,
     allowedHosts: true,
+    // Only watch the project source — ignore skills/, workspace/, etc.
+    watch: {
+      ignored: [
+        "**/skills/**",
+        "**/workspace/**",
+        "**/upload/**",
+        "**/download/**",
+        "**/tool-results/**",
+        "**/node_modules/**",
+        "**/.git/**",
+      ],
+    },
   },
 });

@@ -422,7 +422,7 @@ function AgentDashboard() {
               </div>
 
               <div className="flex flex-col items-end gap-3">
-                <div className="flex gap-4 sm:gap-6">
+                <div className="grid grid-cols-3 gap-3 sm:gap-6">
                   <div className="text-center">
                     <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60">
                       Clock In
@@ -456,7 +456,7 @@ function AgentDashboard() {
 
                 {/* live timer + clock-out button — only if not yet clocked out */}
                 {!todayRecord.clock_out && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center justify-end gap-2">
                     {agent?.shift_timing && (() => {
                       const exp = expectedClockOut(todayRecord.clock_in!, agent.shift_timing);
                       if (!exp) return null;
@@ -471,7 +471,7 @@ function AgentDashboard() {
                           <span className="font-mono tabular-nums">
                             {String(h).padStart(2, "0")}:{String(m).padStart(2, "0")}:{String(s).padStart(2, "0")}
                           </span>
-                          <span className="text-primary/70">to auto clock-out</span>
+                          <span className="hidden text-primary/70 min-[380px]:inline">to auto clock-out</span>
                         </span>
                       );
                     })()}
