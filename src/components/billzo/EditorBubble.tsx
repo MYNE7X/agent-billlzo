@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { Eye, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { fetchUserInfo, type UserInfo, useEditHistory, type EditHistoryEntry } from "@/lib/queries";
@@ -8,14 +8,8 @@ import { formatDate } from "@/lib/billzo";
  * EditorBubble — a small eye icon that opens a popup showing who last edited
  * a section, and optionally the full edit history.
  *
- * - Desktop: hover to open, mouse-leave to close
- * - Mobile: tap to toggle
- *
- * Usage:
- *   <EditorBubble editedBy={userId} editedAt={timestamp} entityType="agent_profile" entityId={agentId} section="Personal" />
- *
- * Or for a simple reviewer bubble (no history):
- *   <EditorBubble reviewedBy={userId} reviewedAt={timestamp} />
+ * - Desktop: hover OR click to open
+ * - Mobile: tap to toggle, outside-tap to close
  */
 export function EditorBubble({
   editedBy,
@@ -36,10 +30,9 @@ export function EditorBubble({
   const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
   const [loading, setLoading] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
   const [isMobile, setIsMobile] = useState(false);
 
-  // If no editedBy, still show the bubble — it displays "System" + the
-  // edit history (if any). This ensures every record has an audit indicator.
   const effectiveEditedBy = editedBy ?? "__system__";
 
   // Detect touch device
@@ -64,11 +57,14 @@ export function EditorBubble({
     });
   }, [open, effectiveEditedBy, userInfo]);
 
-  // Close on outside click (mobile)
+  // Close on outside click
   useEffect(() => {
-    if (!open || !isMobile) return;
+    if (!open) return;
     const handler = (e: MouseEvent | TouchEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (
+        containerRef.current && !containerRef.current.contains(e.target as Node) &&
+        popupRef.current && !popupRef.current.contains(e.target as Node)
+      ) {
         setOpen(false);
       }
     };
@@ -78,11 +74,11 @@ export function EditorBubble({
       document.removeEventListener("mousedown", handler);
       document.removeEventListener("touchstart", handler);
     };
-  }, [open, isMobile]);
+  }, [open]);
 
-  // If no editedBy, still show the bubble — it displays "System" + the
-  // edit history (if any). This ensures every record has an audit indicator.
-  // (moved above — effectiveEditedBy is declared at line 43)
+  const handleToggle = useCallback(() => {
+    setOpen((prev) => !prev);
+  }, []);
 
   return (
     <div
@@ -91,9 +87,9 @@ export function EditorBubble({
       onMouseEnter={() => !isMobile && setOpen(true)}
       onMouseLeave={() => !isMobile && setOpen(false)}
     >
-      {/* Trigger — eye icon */}
+      {/* Trigger — eye icon (click works on ALL devices) */}
       <button
-        onClick={() => isMobile && setOpen((p) => !p)}
+        onClick={handleToggle}
         className="grid size-5 shrink-0 place-items-center rounded-full text-muted-foreground/40 transition-colors hover:bg-primary/15 hover:text-primary"
         aria-label={`${label} — view details`}
         aria-expanded={open}
@@ -101,29 +97,22 @@ export function EditorBubble({
         <Eye className="size-3" />
       </button>
 
-      {/* Popup — positioned to avoid table overflow */}
+      {/* Popup — absolute positioned, high z-index, renders above everything */}
       {open && (
         <div
-          className={cn(
-            "aurora-border glass animate-rise fixed z-[60] mt-1 w-64 max-w-[calc(100vw-2rem)] rounded-xl p-4",
-          )}
-          style={{
-            right: "max(1rem, calc(100vw - 18rem))",
-            top: "auto",
-            bottom: "auto",
-          }}
+          ref={popupRef}
+          className="aurora-border glass animate-rise absolute right-0 top-full z-[9999] mt-1 w-64 max-w-[calc(100vw-2rem)] rounded-xl p-4 shadow-2xl"
           role="tooltip"
+          style={{ position: "absolute" }}
         >
-          {/* Close button (mobile) */}
-          {isMobile && (
-            <button
-              onClick={() => setOpen(false)}
-              className="absolute right-2 top-2 grid size-5 place-items-center rounded-md text-muted-foreground/60 hover:text-foreground"
-              aria-label="Close"
-            >
-              <X className="size-3" />
-            </button>
-          )}
+          {/* Close button */}
+          <button
+            onClick={() => setOpen(false)}
+            className="absolute right-2 top-2 grid size-5 place-items-center rounded-md text-muted-foreground/60 transition-colors hover:text-foreground"
+            aria-label="Close"
+          >
+            <X className="size-3" />
+          </button>
 
           {loading ? (
             <div className="flex items-center gap-2 py-2">
