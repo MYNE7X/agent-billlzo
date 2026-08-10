@@ -53,7 +53,7 @@ const isProtectedUser = (email: string | null | undefined) =>
   !!email && PROTECTED_EMAILS.includes(email.toLowerCase());
 
 function AdminsAndRolesPage() {
-  const { isSuperAdmin, profile } = useAuth();
+  const { isSuperAdmin, isMasterSuperAdmin, profile } = useAuth();
   const navigate = useNavigate();
 
   // Guard: only super_admins may view this page
@@ -133,11 +133,13 @@ function AdminsAndRolesPage() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <AssignRoleDialog trigger={
-              <Button className="gap-2">
-                <UserCog className="size-4" /> Assign Role
-              </Button>
-            } />
+            {isMasterSuperAdmin && (
+              <AssignRoleDialog trigger={
+                <Button className="gap-2">
+                  <UserCog className="size-4" /> Assign Role
+                </Button>
+              } />
+            )}
           </div>
         </div>
 
@@ -232,6 +234,7 @@ function AdminsAndRolesPage() {
                   key={user.id}
                   user={user}
                   currentUserId={profile?.id}
+                  canManageRoles={isMasterSuperAdmin}
                 />
               ))}
             </div>
@@ -303,7 +306,7 @@ function AdminsAndRolesPage() {
                             {protectedUser ? (
                               <ProtectedBadge />
                             ) : (
-                              <UserActionMenu userId={u.id} email={u.email} name={u.full_name} roles={u.roles} />
+                              <UserActionMenu userId={u.id} email={u.email} name={u.full_name} roles={u.roles} canManageRoles={isMasterSuperAdmin} />
                             )}
                           </td>
                         </tr>
@@ -372,6 +375,7 @@ function AdminsAndRolesPage() {
 function StaffCard({
   user,
   currentUserId,
+  canManageRoles,
 }: {
   user: {
     id: string;
@@ -383,6 +387,7 @@ function StaffCard({
     must_change_password?: boolean;
   };
   currentUserId?: string;
+  canManageRoles?: boolean;
 }) {
   const isSelf = user.id === currentUserId;
   const protectedUser = isProtectedUser(user.email);
@@ -435,6 +440,7 @@ function StaffCard({
                 roles={user.roles}
                 isSelf={isSelf}
                 avatarUrl={user.avatar_url}
+                canManageRoles={canManageRoles}
               />
             )}
           </div>
@@ -478,6 +484,14 @@ function ProtectedBadge() {
 
 /* ============================================================
  *  User Action Menu — change role, reset password, remove role
+ *
+ *  ROLE-CHANGE PERMISSIONS:
+ *  - Only the Master Super Admin (myne7x@gmail.com) can see/use the
+ *    "Assign Role" + "Remove Role" controls.
+ *  - Other super_admins / admins see ONLY the Password + Profile Picture
+ *    actions (their other admin capabilities are unaffected).
+ *  - This is enforced server-side via RLS + SECURITY DEFINER functions;
+ *    the UI hiding here is just UX, not security.
  * ============================================================ */
 function UserActionMenu({
   userId,
@@ -486,6 +500,7 @@ function UserActionMenu({
   roles,
   isSelf,
   avatarUrl,
+  canManageRoles,
 }: {
   userId: string;
   email: string | null;
@@ -493,6 +508,7 @@ function UserActionMenu({
   roles: AppRole[];
   isSelf?: boolean;
   avatarUrl?: string | null;
+  canManageRoles?: boolean;
 }) {
   const setRole = useSetUserRole();
   const removeRole = useRemoveUserRole();
@@ -570,21 +586,26 @@ function UserActionMenu({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel className="text-[11px] uppercase tracking-widest text-muted-foreground">
-          Assign Role
-        </DropdownMenuLabel>
-        <DropdownMenuItem onClick={() => handleSetRole("super_admin")} disabled={isSelf || roles.includes("super_admin")}>
-          <Crown className="mr-2 size-3.5 text-amber-400" /> Promote to Super Admin
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleSetRole("admin")} disabled={roles.includes("admin")}>
-          <ShieldHalf className="mr-2 size-3.5 text-info" /> Promote to Admin
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleSetRole("agent")} disabled={roles.includes("agent")}>
-          <UserCheck className="mr-2 size-3.5 text-emerald-400" /> Set as Agent
-        </DropdownMenuItem>
+        {/* ── ROLE MANAGEMENT — Master Super Admin only ─────────────────────── */}
+        {canManageRoles && (
+          <>
+            <DropdownMenuLabel className="text-[11px] uppercase tracking-widest text-muted-foreground">
+              Assign Role
+            </DropdownMenuLabel>
+            <DropdownMenuItem onClick={() => handleSetRole("super_admin")} disabled={isSelf || roles.includes("super_admin")}>
+              <Crown className="mr-2 size-3.5 text-amber-400" /> Promote to Super Admin
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleSetRole("admin")} disabled={roles.includes("admin")}>
+              <ShieldHalf className="mr-2 size-3.5 text-info" /> Promote to Admin
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleSetRole("agent")} disabled={roles.includes("agent")}>
+              <UserCheck className="mr-2 size-3.5 text-emerald-400" /> Set as Agent
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
 
-        <DropdownMenuSeparator />
-
+        {/* ── PASSWORD — always available to staff ──────────────────────────── */}
         <DropdownMenuLabel className="text-[11px] uppercase tracking-widest text-muted-foreground">
           Password
         </DropdownMenuLabel>
@@ -613,7 +634,8 @@ function UserActionMenu({
           </>
         )}
 
-        {roles.length > 0 && (
+        {/* ── REMOVE ROLE — Master Super Admin only ─────────────────────────── */}
+        {canManageRoles && roles.length > 0 && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuLabel className="text-[11px] uppercase tracking-widest text-muted-foreground">
@@ -629,6 +651,17 @@ function UserActionMenu({
                 <Trash2 className="mr-2 size-3.5" /> Remove {labelize(r)}
               </DropdownMenuItem>
             ))}
+          </>
+        )}
+
+        {/* ── INFO: read-only role notice for non-master staff ──────────────── */}
+        {!canManageRoles && (
+          <>
+            <DropdownMenuSeparator />
+            <div className="px-2 py-1.5 text-[10px] leading-relaxed text-muted-foreground/60">
+              <Lock className="mr-1 inline size-3" />
+              Role changes are restricted to the Master Super Admin.
+            </div>
           </>
         )}
       </DropdownMenuContent>

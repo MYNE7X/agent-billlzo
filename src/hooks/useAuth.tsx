@@ -4,6 +4,17 @@ import { supabase } from "@/integrations/supabase/client";
 
 export type AppRole = "super_admin" | "admin" | "agent";
 
+/**
+ * The Master Super Admin email — the ONLY account that can change user roles.
+ * This must match the value in supabase/migrations/20260811_master_super_admin.sql
+ * (public.master_super_admin_email()).
+ *
+ * Used client-side for UI gating (hide/show role-change controls).
+ * The actual enforcement is server-side via RLS + SECURITY DEFINER functions,
+ * so this constant is ONLY for UX — it cannot be bypassed by editing it.
+ */
+export const MASTER_SUPER_ADMIN_EMAIL = "myne7x@gmail.com";
+
 type Profile = {
   id: string;
   full_name: string | null;
@@ -21,6 +32,7 @@ type AuthState = {
   profile: Profile | null;
   roles: AppRole[];
   isSuperAdmin: boolean;
+  isMasterSuperAdmin: boolean;
   isAdmin: boolean;
   isStaff: boolean;
   isAgentOnly: boolean;
@@ -101,6 +113,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const value = useMemo<AuthState>(() => {
     const isSuperAdmin = roles.includes("super_admin");
     const isAdmin = roles.includes("admin");
+    // Master Super Admin = the specific email that can change roles.
+    // Checked against session.user.email (auth.users) — backend enforces the
+    // same check via is_master_super_admin() SQL function.
+    const isMasterSuperAdmin =
+      isSuperAdmin &&
+      Boolean(session?.user?.email) &&
+      session!.user!.email!.toLowerCase() === MASTER_SUPER_ADMIN_EMAIL.toLowerCase();
     return {
       loading,
       session,
@@ -108,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile,
       roles,
       isSuperAdmin,
+      isMasterSuperAdmin,
       isAdmin,
       isStaff: isSuperAdmin || isAdmin,
       isAgentOnly: !isSuperAdmin && !isAdmin,
