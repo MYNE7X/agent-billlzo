@@ -1,4 +1,4 @@
-import { Clock, LogOut, Building2 } from "lucide-react";
+import { Clock, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -24,10 +24,14 @@ export function PendingApproval() {
       <div className="aurora-border glass animate-rise relative w-full max-w-md rounded-3xl p-8 text-center">
         <span className="aurora-border-ring" />
         <div className="relative mb-6 flex flex-col items-center gap-4">
-          <span className="relative grid size-16 place-items-center overflow-hidden rounded-2xl">
-            <span className="absolute inset-0 bg-gradient-to-br from-primary via-cyan-400 to-fuchsia-500 opacity-95" />
-            <span className="absolute -inset-3 animate-aurora bg-gradient-to-br from-primary/40 via-fuchsia-500/40 to-violet-500/40 blur-lg" />
-            <Building2 className="relative size-7 text-background" strokeWidth={2.4} />
+          <span className="relative grid size-16 shrink-0 place-items-center overflow-hidden rounded-2xl">
+            <img
+              src="/logo.png"
+              alt="Billzo"
+              className="size-full object-cover"
+              draggable={false}
+            />
+            <span className="pointer-events-none absolute -inset-3 animate-aurora bg-gradient-to-br from-primary/40 via-fuchsia-500/40 to-violet-500/40 blur-lg" />
           </span>
           <div>
             <h2 className="font-display text-2xl font-bold text-gradient-aurora">Account Pending</h2>

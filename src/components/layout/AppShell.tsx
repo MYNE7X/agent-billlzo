@@ -7,7 +7,6 @@ import {
   ShieldCheck,
   UserCircle,
   LogOut,
-  Building2,
   UserCog,
   Zap,
   Receipt,
@@ -74,15 +73,15 @@ function SidebarNav({
         onClick={onNavigate}
         className="group relative flex items-center gap-3 overflow-hidden rounded-2xl px-2 py-2 transition-colors hover:bg-secondary/40"
       >
-        <span className="relative grid size-11 place-items-center overflow-hidden rounded-xl">
-          {/* gradient base */}
-          <span className="absolute inset-0 bg-gradient-to-br from-primary via-cyan-400 to-fuchsia-500 opacity-95" />
-          {/* shimmer overlay */}
-          <span className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/30 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
-          {/* animated aurora glow */}
-          <span className="absolute -inset-2 animate-aurora bg-gradient-to-br from-primary/40 via-fuchsia-500/40 to-violet-500/40 blur-lg" />
-          <Building2 className="relative size-5 text-background drop-shadow" strokeWidth={2.4} />
-          <span className="absolute inset-0 ring-1 ring-inset ring-white/25" />
+        <span className="relative grid size-11 shrink-0 place-items-center overflow-hidden rounded-xl">
+          <img
+            src="/logo-mark.png"
+            alt="Billzo"
+            className="size-full object-cover"
+            draggable={false}
+          />
+          {/* shimmer overlay on hover */}
+          <span className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-transparent via-white/20 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
         </span>
         <span className="min-w-0">
           <span className="brand-mark font-display block text-xl font-bold leading-tight">
@@ -304,8 +303,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           <Link to="/dashboard" className="flex min-w-0 items-center gap-2">
             <span className="relative grid size-7 shrink-0 place-items-center overflow-hidden rounded-lg">
-              <span className="absolute inset-0 bg-gradient-to-br from-primary via-cyan-400 to-fuchsia-500 opacity-95" />
-              <Building2 className="relative size-3.5 text-background" strokeWidth={2.5} />
+              <img
+                src="/logo-mark.png"
+                alt="Billzo"
+                className="size-full object-cover"
+                draggable={false}
+              />
             </span>
             <span className="brand-mark font-display text-base font-bold">Billzo</span>
           </Link>

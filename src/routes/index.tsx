@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { Building2, Fingerprint, Clock, FileStack, Loader2, ShieldCheck, Zap, ArrowRight } from "lucide-react";
+import { Fingerprint, Clock, FileStack, Loader2, ShieldCheck, Zap, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -89,11 +89,14 @@ function AuthPage() {
       {/* ── Left brand panel ──────────────────────────────────────────────── */}
       <section className="relative hidden flex-col justify-between p-12 lg:flex">
         <div className="flex items-center gap-3">
-          <span className="relative grid size-12 place-items-center overflow-hidden rounded-2xl">
-            <span className="absolute inset-0 bg-gradient-to-br from-primary via-cyan-400 to-fuchsia-500" />
-            <span className="absolute -inset-3 animate-aurora bg-gradient-to-br from-primary/40 via-fuchsia-500/40 to-violet-500/40 blur-lg" />
-            <Building2 className="relative size-6 text-background" strokeWidth={2.4} />
-            <span className="absolute inset-0 ring-1 ring-inset ring-white/25" />
+          <span className="relative grid size-12 shrink-0 place-items-center overflow-hidden rounded-2xl">
+            <img
+              src="/logo.png"
+              alt="Billzo"
+              className="size-full object-cover"
+              draggable={false}
+            />
+            <span className="pointer-events-none absolute -inset-3 animate-aurora bg-gradient-to-br from-primary/40 via-fuchsia-500/40 to-violet-500/40 blur-lg" />
           </span>
           <div>
             <p className="brand-mark font-display text-2xl font-bold">Billzo</p>
@@ -155,9 +158,13 @@ function AuthPage() {
           <span className="aurora-border-ring" />
           {/* Mobile brand */}
           <div className="mb-6 flex items-center gap-3 lg:hidden">
-            <span className="relative grid size-11 place-items-center overflow-hidden rounded-2xl">
-              <span className="absolute inset-0 bg-gradient-to-br from-primary via-cyan-400 to-fuchsia-500" />
-              <Building2 className="relative size-5 text-background" strokeWidth={2.4} />
+            <span className="relative grid size-11 shrink-0 place-items-center overflow-hidden rounded-2xl">
+              <img
+                src="/logo-mark.png"
+                alt="Billzo"
+                className="size-full object-cover"
+                draggable={false}
+              />
             </span>
             <div>
               <p className="brand-mark font-display text-xl font-bold">Billzo</p>

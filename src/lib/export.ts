@@ -54,12 +54,53 @@ export async function exportPDF<T extends Record<string, unknown>>(
   const { default: jsPDF } = await import("jspdf");
   const { default: autoTable } = await import("jspdf-autotable");
   const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
+
+  // ── Load the Billzo logo ──────────────────────────────────────────────────
+  let logoDataUrl: string | null = null;
+  try {
+    const resp = await fetch("/logo-pdf.png");
+    if (resp.ok) {
+      const blob = await resp.blob();
+      logoDataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+  } catch {
+    // ignore
+  }
+
+  // Draw the logo at top-left, or fall back to a drawn mark
+  const brandSize = 24;
+  const brandX = 40;
+  const brandY = 24;
+  if (logoDataUrl) {
+    doc.setFillColor(11, 15, 25);
+    doc.roundedRect(brandX, brandY, brandSize, brandSize, 5, 5, "F");
+    doc.addImage(logoDataUrl, "PNG", brandX, brandY, brandSize, brandSize, undefined, "FAST");
+  } else {
+    doc.setFillColor(76, 213, 184);
+    doc.roundedRect(brandX, brandY, brandSize, brandSize, 5, 5, "F");
+    doc.setTextColor(13, 20, 32);
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("B", brandX + 8, brandY + 17);
+  }
+
+  // Title and timestamp next to the logo
+  doc.setTextColor(20, 30, 45);
   doc.setFontSize(16);
-  doc.text(title, 40, 40);
+  doc.setFont("helvetica", "bold");
+  doc.text(title, brandX + brandSize + 10, brandY + 12);
   doc.setFontSize(9);
-  doc.text(`Generated ${new Date().toLocaleString("en-PK")} · Billzo Office Management System`, 40, 58);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(120, 135, 155);
+  doc.text(`Generated ${new Date().toLocaleString("en-PK")} · Billzo Office Management System`, brandX + brandSize + 10, brandY + 26);
+
   autoTable(doc, {
-    startY: 74,
+    startY: brandY + brandSize + 16,
     head: [columns.map((c) => c.label)],
     body: rows.map((r) => columns.map((c) => cell(r[c.key]))),
     styles: { fontSize: 8, cellPadding: 5 },
@@ -127,6 +168,24 @@ export async function exportAttendancePDF(
     format: "a4",
   });
 
+  // ── Load the Billzo logo as a data URL ────────────────────────────────────
+  // Falls back gracefully to the drawn "B" mark if the logo fails to load.
+  let logoDataUrl: string | null = null;
+  try {
+    const resp = await fetch("/logo-pdf.png");
+    if (resp.ok) {
+      const blob = await resp.blob();
+      logoDataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+  } catch {
+    // ignore — we'll fall back to the drawn mark
+  }
+
   const pageW = doc.internal.pageSize.getWidth();
   const pageH = doc.internal.pageSize.getHeight();
   const margin = 32;
@@ -147,25 +206,37 @@ export async function exportAttendancePDF(
   doc.setFillColor(76, 213, 184); // primary mint
   doc.rect(0, 0, pageW, 3, "F");
 
-  // Brand mark (square + "B")
-  doc.setFillColor(76, 213, 184);
-  doc.roundedRect(margin, 32, 32, 32, 6, 6, "F");
-  doc.setTextColor(13, 20, 32);
-  doc.setFontSize(20);
-  doc.setFont("helvetica", "bold");
-  doc.text("B", margin + 11, 53);
+  // Brand mark — use the actual logo image, fall back to the "B" letter
+  const brandSize = 36;
+  const brandX = margin;
+  const brandY = 30;
+  if (logoDataUrl) {
+    // Add a subtle rounded background behind the logo for contrast
+    doc.setFillColor(11, 15, 25); // dark navy matching logo bg
+    doc.roundedRect(brandX, brandY, brandSize, brandSize, 7, 7, "F");
+    // Add the logo image
+    doc.addImage(logoDataUrl, "PNG", brandX, brandY, brandSize, brandSize, undefined, "FAST");
+  } else {
+    // Fallback: drawn "B" mark
+    doc.setFillColor(76, 213, 184);
+    doc.roundedRect(brandX, brandY, brandSize, brandSize, 6, 6, "F");
+    doc.setTextColor(13, 20, 32);
+    doc.setFontSize(20);
+    doc.setFont("helvetica", "bold");
+    doc.text("B", brandX + 12, brandY + 24);
+  }
 
   // Title
   doc.setTextColor(245, 247, 250);
   doc.setFontSize(20);
   doc.setFont("helvetica", "bold");
-  doc.text(meta.title, margin + 44, 50);
+  doc.text(meta.title, margin + brandSize + 12, brandY + 18);
 
   // Subtitle
   doc.setTextColor(180, 195, 215);
   doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
-  doc.text(meta.subtitle, margin + 44, 66);
+  doc.text(meta.subtitle, margin + brandSize + 12, brandY + 34);
 
   // Period badge (right-aligned)
   doc.setFillColor(255, 255, 255, 0.08);

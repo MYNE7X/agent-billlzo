@@ -161,18 +161,26 @@ function EmployeeCard({ agent, isFemale }: { agent: Agent; isFemale: boolean }) 
 
         {/* Top row: logo / company + avatar */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <div>
-            <div style={{
-              fontSize: 11,
-              fontWeight: 800,
-              letterSpacing: "0.2em",
-              color: "#fff",
-              textTransform: "uppercase",
-            }}>
-              BILLZO
-            </div>
-            <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)", letterSpacing: "0.1em", marginTop: 1 }}>
-              OFFICE MANAGEMENT SYSTEM
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {/* Logo */}
+            <img
+              src="/logo-mark.png"
+              alt="Billzo"
+              style={{ width: 28, height: 28, borderRadius: 6, objectFit: "cover" }}
+            />
+            <div>
+              <div style={{
+                fontSize: 11,
+                fontWeight: 800,
+                letterSpacing: "0.2em",
+                color: "#fff",
+                textTransform: "uppercase",
+              }}>
+                BILLZO
+              </div>
+              <div style={{ fontSize: 8, color: "rgba(255,255,255,0.4)", letterSpacing: "0.1em", marginTop: 1 }}>
+                OFFICE MANAGEMENT SYSTEM
+              </div>
             </div>
           </div>
 
