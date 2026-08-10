@@ -1234,6 +1234,78 @@ export function usePendingRequestCount() {
   });
 }
 
+// ============================================================================
+// EDIT HISTORY + REVIEWER NAME LOOKUP
+// ============================================================================
+
+export type EditHistoryEntry = Database["public"]["Tables"]["edit_history"]["Row"];
+
+export type UserInfo = {
+  full_name: string | null;
+  email: string | null;
+  avatar_url: string | null;
+};
+
+/** Resolve a user's display name + email via the get_user_display_name RPC. */
+export async function fetchUserInfo(userId: string): Promise<UserInfo | null> {
+  const { data, error } = await supabase.rpc("get_user_display_name", { _user_id: userId });
+  if (error) {
+    // If the function doesn't exist yet (migration pending), return null
+    if (error.code === "PGRST205" || error.code === "42883") return null;
+    return null;
+  }
+  if (!data || (Array.isArray(data) && data.length === 0)) return null;
+  const row = Array.isArray(data) ? data[0] : data;
+  return row as unknown as UserInfo;
+}
+
+/** Fetch edit history for an entity (e.g. agent_profile). */
+export function useEditHistory(entityType: string, entityId?: string) {
+  return useQuery({
+    queryKey: ["edit-history", entityType, entityId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("edit_history")
+        .select("*")
+        .eq("entity_type", entityType)
+        .eq("entity_id", entityId!)
+        .order("edited_at", { ascending: false })
+        .limit(20);
+      if (error) {
+        if (error.code === "PGRST205" || error.code === "42P01") return [];
+        throw error;
+      }
+      return (data ?? []) as EditHistoryEntry[];
+    },
+    enabled: Boolean(entityId),
+    retry: (failureCount, error) => {
+      if (error && (error.code === "PGRST205" || error.code === "42P01")) return false;
+      return failureCount < 2;
+    },
+  });
+}
+
+/** Write an edit history entry (fire-and-forget). */
+export function logEdit(input: {
+  entityType: string;
+  entityId: string;
+  section?: string;
+  fieldName?: string;
+  oldValue?: string | null;
+  newValue?: string | null;
+  editedBy?: string | null;
+}) {
+  void supabase.from("edit_history").insert({
+    entity_type: input.entityType,
+    entity_id: input.entityId,
+    section: input.section ?? null,
+    field_name: input.fieldName ?? null,
+    old_value: input.oldValue ?? null,
+    new_value: input.newValue ?? null,
+    edited_by: input.editedBy ?? null,
+  });
+}
+
 /** Requests for a specific agent (agent's own view). */
 export function useAgentAttendanceRequests(agentId?: string) {
   return useQuery({

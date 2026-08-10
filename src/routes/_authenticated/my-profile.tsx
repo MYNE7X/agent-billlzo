@@ -16,6 +16,7 @@ import {
   useMyAgent, useAgentAttendanceHistory, useAgentDocuments,
   useSaveAgent, useAgentMonthlySales, useAgentSalaryLedger,
   useAgentReports, useAgentMonthAttendance, useOfficesMap,
+  useEditHistory, logEdit,
   type AgentWithRefs, type MonthlyReportWithAgent,
 } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,6 +26,7 @@ import {
 } from "@/lib/billzo";
 import { StatusBadge } from "@/components/billzo/StatusBadge";
 import { SecureImage } from "@/components/billzo/SecureImage";
+import { EditorBubble } from "@/components/billzo/EditorBubble";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { effectiveHours, shiftExpectedHours, prettyHM, parseShift } from "@/lib/shift";
@@ -54,7 +56,21 @@ function InfoRow({ icon: Icon, label, value }: {
   );
 }
 
-function SectionTitle({ children, icon: Icon }: { children: React.ReactNode; icon?: React.ElementType }) {
+function SectionTitle({
+  children,
+  icon: Icon,
+  editedBy,
+  editedAt,
+  entityId,
+  section,
+}: {
+  children: React.ReactNode;
+  icon?: React.ElementType;
+  editedBy?: string | null;
+  editedAt?: string | null;
+  entityId?: string;
+  section?: string;
+}) {
   return (
     <div className="mb-3 flex items-center gap-2">
       {Icon && (
@@ -65,6 +81,16 @@ function SectionTitle({ children, icon: Icon }: { children: React.ReactNode; ico
       <h3 className="flex-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-foreground/80">
         {children}
       </h3>
+      {editedBy && (
+        <EditorBubble
+          editedBy={editedBy}
+          editedAt={editedAt}
+          entityType={entityId ? "agent_profile" : undefined}
+          entityId={entityId}
+          section={section}
+          label="Edited by"
+        />
+      )}
       <span className="h-px w-12 bg-gradient-to-r from-primary/30 to-transparent" />
     </div>
   );
@@ -663,6 +689,10 @@ function MyProfilePage() {
   const officesMap = useOfficesMap();
   const { data: history = [] } = useAgentAttendanceHistory(agent?.id, 90);
   const { data: reports = [] } = useAgentReports(agent?.id);
+  const { data: editHistory = [] } = useEditHistory("agent_profile", agent?.id);
+
+  // Find the most recent edit for a given section
+  const lastEdit = (section: string) => editHistory.find((e) => e.section === section);
 
   const [uploadingDp, setUploadingDp] = useState(false);
   const [uploadingCnicFront, setUploadingCnicFront] = useState(false);
@@ -924,7 +954,15 @@ function MyProfilePage() {
 
         {/* PERSONAL */}
         <TabsContent value="personal" className="glass rounded-2xl p-5 space-y-5">
-          <SectionTitle icon={User}>Personal Information</SectionTitle>
+          <SectionTitle
+            icon={User}
+            editedBy={lastEdit("personal")?.edited_by}
+            editedAt={lastEdit("personal")?.edited_at}
+            entityId={agent.id}
+            section="Personal"
+          >
+            Personal Information
+          </SectionTitle>
           <div className="grid gap-2.5 sm:grid-cols-2">
             <InfoRow icon={User} label="Full Name" value={agent.full_name} />
             <InfoRow icon={User} label="Father's Name" value={agent.father_name} />
@@ -936,7 +974,15 @@ function MyProfilePage() {
             <InfoRow icon={ShieldCheck} label="Passport Number" value={agent.passport_number} />
           </div>
 
-          <SectionTitle icon={Phone}>Contact</SectionTitle>
+          <SectionTitle
+            icon={Phone}
+            editedBy={lastEdit("contact")?.edited_by}
+            editedAt={lastEdit("contact")?.edited_at}
+            entityId={agent.id}
+            section="Contact"
+          >
+            Contact
+          </SectionTitle>
           <div className="grid gap-2.5 sm:grid-cols-2">
             <InfoRow icon={Phone} label="Phone" value={agent.phone_number} />
             <InfoRow icon={Phone} label="WhatsApp" value={agent.whatsapp_number} />

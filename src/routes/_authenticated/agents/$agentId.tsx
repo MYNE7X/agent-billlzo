@@ -14,7 +14,7 @@ import { StatusBadge } from "@/components/billzo/StatusBadge";
 import { SecureImage } from "@/components/billzo/SecureImage";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAgent, useSaveAgent } from "@/lib/queries";
+import { useAgent, useSaveAgent, logEdit } from "@/lib/queries";
 import { removeAgentFile } from "@/lib/storage";
 import { useAuth } from "@/hooks/useAuth";
 import { initials } from "@/lib/billzo";
@@ -26,7 +26,7 @@ export const Route = createFileRoute("/_authenticated/agents/$agentId")({
 
 function AgentDetail() {
   const { agentId } = useParams({ from: "/_authenticated/agents/$agentId" });
-  const { isStaff, isSuperAdmin } = useAuth();
+  const { user, isStaff, isSuperAdmin } = useAuth();
   const { data: agent, isLoading, refetch } = useAgent(agentId);
   const save = useSaveAgent();
   const [deletingPic, setDeletingPic] = useState(false);
@@ -125,6 +125,13 @@ function AgentDetail() {
               try {
                 await save.mutateAsync({ id: agentId, values: payload as never });
                 toast.success("Profile updated");
+                // Log the edit for the history bubble
+                logEdit({
+                  entityType: "agent_profile",
+                  entityId: agentId,
+                  section: "profile",
+                  editedBy: user?.id ?? null,
+                });
               } catch (e) {
                 toast.error(e instanceof Error ? e.message : "Could not save changes");
               }

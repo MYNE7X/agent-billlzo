@@ -47,6 +47,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { RequestStatusBadge } from "@/components/billzo/RequestStatusBadge";
+import { EditorBubble } from "@/components/billzo/EditorBubble";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/attendance-requests")({
@@ -215,45 +216,109 @@ function AttendanceRequestsPage() {
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-border/40">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border/40 bg-secondary/30">
-                  {["Agent", "Type", "Date", "Reason", "Submitted", "Status", "Actions"].map((h) => (
-                    <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/20">
-                {filtered.map((r) => (
-                  <tr key={r.id} className="transition-colors hover:bg-secondary/20">
-                    <td className="px-4 py-2.5">
-                      <div className="text-xs font-semibold">{r.agents?.full_name ?? "—"}</div>
-                      <div className="text-[10px] text-muted-foreground/70">{r.agents?.employee_id ?? "—"}</div>
-                    </td>
-                    <td className="px-4 py-2.5 text-xs">{requestTypeLabel(r.request_type)}</td>
-                    <td className="px-4 py-2.5 text-xs text-muted-foreground">
-                      {r.from_date && r.to_date
-                        ? `${formatDate(r.from_date)} → ${formatDate(r.to_date)}`
-                        : r.attendance_date ? formatDate(r.attendance_date) : "—"}
-                    </td>
-                    <td className="max-w-[180px] truncate px-4 py-2.5 text-xs text-muted-foreground">{r.reason}</td>
-                    <td className="px-4 py-2.5 text-xs text-muted-foreground">{formatDate(r.created_at)}</td>
-                    <td className="px-4 py-2.5"><RequestStatusBadge value={r.status} /></td>
-                    <td className="px-4 py-2.5">
-                      <Button size="sm" variant="ghost" className="h-8 gap-1" onClick={() => setReviewing(r)}>
-                        <Eye className="size-3.5" /> Review
-                      </Button>
-                    </td>
+        /* ── Responsive: table on desktop, cards on mobile ──────────────────── */
+        <>
+          {/* Desktop table (hidden on mobile) */}
+          <div className="hidden overflow-hidden rounded-2xl border border-border/40 lg:block">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/40 bg-secondary/30">
+                    {["Agent", "Type", "Date", "Reason", "Submitted", "Status", "Reviewed By", "Actions"].map((h) => (
+                      <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                        {h}
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-border/20">
+                  {filtered.map((r) => (
+                    <tr key={r.id} className="transition-colors hover:bg-secondary/20">
+                      <td className="px-4 py-2.5">
+                        <div className="text-xs font-semibold">{r.agents?.full_name ?? "—"}</div>
+                        <div className="text-[10px] text-muted-foreground/70">{r.agents?.employee_id ?? "—"}</div>
+                      </td>
+                      <td className="px-4 py-2.5 text-xs">{requestTypeLabel(r.request_type)}</td>
+                      <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                        {r.from_date && r.to_date
+                          ? `${formatDate(r.from_date)} → ${formatDate(r.to_date)}`
+                          : r.attendance_date ? formatDate(r.attendance_date) : "—"}
+                      </td>
+                      <td className="max-w-[180px] truncate px-4 py-2.5 text-xs text-muted-foreground">{r.reason}</td>
+                      <td className="px-4 py-2.5 text-xs text-muted-foreground">{formatDate(r.created_at)}</td>
+                      <td className="px-4 py-2.5"><RequestStatusBadge value={r.status} /></td>
+                      <td className="px-4 py-2.5">
+                        {r.reviewed_by ? (
+                          <EditorBubble
+                            editedBy={r.reviewed_by}
+                            editedAt={r.reviewed_at}
+                            label="Reviewed by"
+                          />
+                        ) : (
+                          <span className="text-xs text-muted-foreground/30">—</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <Button size="sm" variant="ghost" className="h-8 gap-1" onClick={() => setReviewing(r)}>
+                          <Eye className="size-3.5" /> Review
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+
+          {/* Mobile cards (hidden on desktop) */}
+          <div className="space-y-3 lg:hidden">
+            {filtered.map((r) => (
+              <div
+                key={r.id}
+                className="aurora-border glass relative overflow-hidden rounded-2xl p-4"
+                onClick={() => setReviewing(r)}
+              >
+                <span className="aurora-border-ring" />
+                {/* Top row: agent + status */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{r.agents?.full_name ?? "—"}</p>
+                    <p className="mt-0.5 font-mono text-[10px] text-muted-foreground/70">{r.agents?.employee_id ?? "—"}</p>
+                  </div>
+                  <RequestStatusBadge value={r.status} />
+                </div>
+                {/* Type + date */}
+                <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                  <span className="font-medium text-primary/80">{requestTypeLabel(r.request_type)}</span>
+                  <span className="text-muted-foreground/50">·</span>
+                  <span className="text-muted-foreground">
+                    {r.from_date && r.to_date
+                      ? `${formatDate(r.from_date)} → ${formatDate(r.to_date)}`
+                      : r.attendance_date ? formatDate(r.attendance_date) : "—"}
+                  </span>
+                </div>
+                {/* Reason */}
+                <p className="mt-2 line-clamp-2 text-xs text-muted-foreground/70">{r.reason}</p>
+                {/* Bottom row: submitted + reviewer + review button */}
+                <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/30 pt-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] text-muted-foreground/50">{formatDate(r.created_at)}</span>
+                    {r.reviewed_by && (
+                      <EditorBubble
+                        editedBy={r.reviewed_by}
+                        editedAt={r.reviewed_at}
+                        label="Reviewed by"
+                      />
+                    )}
+                  </div>
+                  <button className="flex items-center gap-1 rounded-lg bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary">
+                    <Eye className="size-3" /> Review
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
       )}
 
       {/* ── Review Dialog ─────────────────────────────────────────────────────── */}
@@ -429,7 +494,13 @@ function ReviewDialog({
               {request.rejection_reason && (
                 <Field label="Rejection Reason" value={<span className="text-destructive">{request.rejection_reason}</span>} />
               )}
-              {request.reviewed_at && <Field label="Reviewed At" value={formatDate(request.reviewed_at)} />}
+              {request.reviewed_at && (
+                <div className="flex items-center gap-2">
+                  <span className="w-32 shrink-0 text-xs font-semibold uppercase tracking-wide text-muted-foreground/60">Reviewed</span>
+                  <span className="flex-1 text-sm">{formatDate(request.reviewed_at)}</span>
+                  <EditorBubble editedBy={request.reviewed_by} editedAt={request.reviewed_at} label="Reviewed by" />
+                </div>
+              )}
             </div>
           )}
         </div>

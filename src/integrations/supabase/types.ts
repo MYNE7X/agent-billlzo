@@ -44,6 +44,44 @@ export type Database = {
         }
         Relationships: []
       }
+      edit_history: {
+        Row: {
+          id: string
+          entity_type: string
+          entity_id: string
+          section: string | null
+          field_name: string | null
+          old_value: string | null
+          new_value: string | null
+          edited_by: string | null
+          edited_at: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          entity_type: string
+          entity_id: string
+          section?: string | null
+          field_name?: string | null
+          old_value?: string | null
+          new_value?: string | null
+          edited_by?: string | null
+          edited_at?: string
+          created_at?: string
+        }
+        Update: {
+          [k: string]: unknown
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edit_history_edited_by_fkey"
+            columns: ["edited_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendance_requests: {
         Row: {
           id: string
