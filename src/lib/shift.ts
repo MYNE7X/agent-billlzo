@@ -134,3 +134,50 @@ export const PARSED_SHIFTS = SHIFT_TIMINGS.map((s) => {
   const parsed = parseShift(s);
   return { ...parsed, raw: s };
 });
+
+/**
+ * Compute the expected number of working hours for a given shift.
+ *
+ * For "Morning (09:00 - 18:00)" → 9 hours
+ * For "Night (21:00 - 06:00)"   → 9 hours (crosses midnight)
+ * For "Flexible"                 → 9 (default full-day assumption)
+ *
+ * This is used by the reports/profile to auto-calculate hours when
+ * clock_in/clock_out are missing but the agent was marked present.
+ */
+export function shiftExpectedHours(shiftRaw?: string | null): number {
+  const shift = parseShift(shiftRaw);
+  if (shift.flexible || !shift.startHM || !shift.endHM) return 9; // default
+  const [sh, sm] = shift.startHM.split(":").map(Number);
+  const [eh, em] = shift.endHM.split(":").map(Number);
+  let mins = eh! * 60 + em! - (sh! * 60 + sm!);
+  if (mins <= 0) mins += 24 * 60; // crosses midnight
+  // Round to 1 decimal (e.g. 9.0, 8.5)
+  return Math.round((mins / 60) * 10) / 10;
+}
+
+/**
+ * Given an attendance record and the agent's shift, compute the effective
+ * working hours. Uses clock_in/clock_out when available, otherwise falls back
+ * to the shift's expected hours (for "present" / "late" / "half_day" statuses).
+ *
+ * - present / late  → full shift hours
+ * - half_day        → half shift hours
+ * - leave / holiday / absent → 0 hours
+ */
+export function effectiveHours(
+  record: { clock_in?: string | null; clock_out?: string | null; total_hours?: number | null; status?: string | null },
+  shiftRaw?: string | null,
+): number {
+  const status = record.status ?? "present";
+  // If we have actual clock-in/out times, use the recorded total_hours
+  if (record.clock_in && record.clock_out && record.total_hours != null && record.total_hours > 0) {
+    return record.total_hours;
+  }
+  // Otherwise compute from shift
+  const expected = shiftExpectedHours(shiftRaw);
+  if (status === "present" || status === "late") return expected;
+  if (status === "half_day") return Math.round((expected / 2) * 10) / 10;
+  // absent / leave / holiday → 0
+  return 0;
+}

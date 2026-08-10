@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   User, Phone, Mail, MapPin, Calendar, Briefcase, GraduationCap,
@@ -6,6 +6,8 @@ import {
   Hash, HeartPulse, Languages, Star, Upload, CheckCircle2,
   TrendingUp, Lock, BarChart3, Award, Smile, Target, Trophy, ArrowRight,
   Sparkles, Verified, Settings, Share2, ChevronRight, Activity,
+  AlertCircle, RefreshCw, CalendarDays, ChevronLeft, ChevronRight as ChevronRightIcon,
+  Wallet, FileBadge, Moon, Sun,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -13,7 +15,8 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   useMyAgent, useAgentAttendanceHistory, useAgentDocuments,
   useSaveAgent, useAgentMonthlySales, useAgentSalaryLedger,
-  useAgentReports, type AgentWithRefs, type MonthlyReportWithAgent,
+  useAgentReports, useAgentMonthAttendance,
+  type AgentWithRefs, type MonthlyReportWithAgent,
 } from "@/lib/queries";
 import { supabase } from "@/integrations/supabase/client";
 import { uploadAndRegister, uploadAgentFile } from "@/lib/storage";
@@ -24,6 +27,7 @@ import { StatusBadge } from "@/components/billzo/StatusBadge";
 import { SecureImage } from "@/components/billzo/SecureImage";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { effectiveHours, shiftExpectedHours, prettyHM, parseShift } from "@/lib/shift";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/my-profile")({
@@ -124,14 +128,80 @@ function OneTimeUpload({
 
 // ── attendance tab ────────────────────────────────────────────────────────────
 
-function AttendanceTab({ agentId }: { agentId: string }) {
-  const { data: history = [], isLoading } = useAgentAttendanceHistory(agentId, 90);
+function AttendanceTab({ agentId, shiftTiming }: { agentId: string; shiftTiming?: string | null }) {
+  // Default to current month
+  const today = new Date();
+  const defaultMonth = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+  const [selectedMonth, setSelectedMonth] = useState(defaultMonth);
 
-  const counts = history.reduce<Record<string, number>>((acc, r) => {
-    acc[r.status] = (acc[r.status] ?? 0) + 1;
-    return acc;
-  }, {});
-  const totalHours = history.reduce((s, r) => s + (r.total_hours ?? 0), 0);
+  // Fetch attendance for the selected month
+  const { data: monthRecords = [], isLoading, isError, error, refetch } = useAgentMonthAttendance(agentId, selectedMonth);
+
+  // Build a map of date → record for quick lookup
+  const recordsByDate = useMemo(() => {
+    const map = new Map<string, typeof monthRecords[number]>();
+    for (const r of monthRecords) map.set(r.date, r);
+    return map;
+  }, [monthRecords]);
+
+  // Compute the full month calendar with auto-fill:
+  // - If a record exists, use it
+  // - If no record exists and it's a weekday (Mon-Fri) and the day is in the past, auto-mark as "present"
+  //   (assumption: agent worked but forgot to clock in/out → count shift hours)
+  // - Weekends (Sat/Sun) are left empty (no auto-fill)
+  // - Future days are left empty
+  const shiftHours = shiftExpectedHours(shiftTiming);
+  const calendar = useMemo(() => {
+    const [y, m] = selectedMonth.split("-").map(Number);
+    const daysInMonth = new Date(y!, m!, 0).getDate();
+    const todayISO = new Date().toISOString().slice(0, 10);
+    const list: Array<{
+      date: string;
+      day: number;
+      weekday: string;
+      record: typeof monthRecords[number] | null;
+      autoFilled: boolean;
+      hours: number;
+      status: string | null;
+    }> = [];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${selectedMonth}-${String(d).padStart(2, "0")}`;
+      const dateObj = new Date(y!, m! - 1, d);
+      const weekday = dateObj.toLocaleDateString("en-US", { weekday: "short" });
+      const record = recordsByDate.get(dateStr) ?? null;
+      const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
+      const isFuture = dateStr > todayISO;
+      const isToday = dateStr === todayISO;
+
+      // Auto-fill logic: weekday, not future, not today, no existing record
+      const shouldAutoFill = !record && !isWeekend && !isFuture && !isToday;
+      const autoStatus = shouldAutoFill ? "present" : null;
+
+      const effectiveRecord = record ?? (shouldAutoFill ? { status: "present", clock_in: null, clock_out: null, total_hours: null } as typeof monthRecords[number] : null);
+      const hours = effectiveRecord ? effectiveHours(effectiveRecord, shiftTiming) : 0;
+
+      list.push({
+        date: dateStr,
+        day: d,
+        weekday,
+        record,
+        autoFilled: shouldAutoFill,
+        hours,
+        status: record?.status ?? autoStatus,
+      });
+    }
+    return list.reverse(); // most recent first
+  }, [selectedMonth, recordsByDate, monthRecords, shiftTiming]);
+
+  // Summary stats for the month
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { present: 0, absent: 0, late: 0, leave: 0, half_day: 0, holiday: 0, totalHours: 0 };
+    for (const day of calendar) {
+      if (day.status && day.status in c) c[day.status] = (c[day.status] ?? 0) + 1;
+      c["totalHours"]! += day.hours;
+    }
+    return c;
+  }, [calendar]);
 
   const summaryItems = [
     { label: "Present", value: counts["present"] ?? 0, color: "text-emerald-400", bg: "from-emerald-500/15 to-emerald-500/5", ring: "ring-emerald-500/20" },
@@ -139,11 +209,61 @@ function AttendanceTab({ agentId }: { agentId: string }) {
     { label: "Late", value: counts["late"] ?? 0, color: "text-amber-400", bg: "from-amber-500/15 to-amber-500/5", ring: "ring-amber-500/20" },
     { label: "Leave", value: counts["leave"] ?? 0, color: "text-violet-400", bg: "from-violet-500/15 to-violet-500/5", ring: "ring-violet-500/20" },
     { label: "Half Day", value: counts["half_day"] ?? 0, color: "text-blue-400", bg: "from-blue-500/15 to-blue-500/5", ring: "ring-blue-500/20" },
-    { label: "Hours", value: totalHours.toFixed(0) + "h", color: "text-primary", bg: "from-primary/15 to-primary/5", ring: "ring-primary/20" },
+    { label: "Hours", value: `${(counts["totalHours"] ?? 0).toFixed(0)}h`, color: "text-primary", bg: "from-primary/15 to-primary/5", ring: "ring-primary/20" },
   ];
+
+  // Month navigation
+  const goPrevMonth = () => {
+    const [y, m] = selectedMonth.split("-").map(Number);
+    const d = new Date(y!, m! - 1, 1);
+    d.setMonth(d.getMonth() - 1);
+    setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  };
+  const goNextMonth = () => {
+    const [y, m] = selectedMonth.split("-").map(Number);
+    const d = new Date(y!, m! - 1, 1);
+    d.setMonth(d.getMonth() + 1);
+    // Don't allow navigating past the current month
+    if (d > new Date(today.getFullYear(), today.getMonth(), 1)) return;
+    setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  };
+
+  const monthLabel = new Date(selectedMonth + "-01").toLocaleDateString("en-PK", { year: "numeric", month: "long" });
+  const shiftParsed = parseShift(shiftTiming);
 
   return (
     <div className="space-y-4">
+      {/* Month navigator */}
+      <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/40 bg-secondary/20 px-4 py-3">
+        <button
+          onClick={goPrevMonth}
+          className="grid size-8 place-items-center rounded-lg bg-secondary/50 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground active:scale-95"
+          aria-label="Previous month"
+        >
+          <ChevronLeft className="size-4" />
+        </button>
+        <div className="flex flex-col items-center gap-0.5">
+          <div className="flex items-center gap-2">
+            <CalendarDays className="size-4 text-primary" />
+            <span className="font-display text-sm font-semibold">{monthLabel}</span>
+          </div>
+          {shiftParsed && !shiftParsed.flexible && (
+            <span className="text-[10px] text-muted-foreground/70">
+              Shift: {prettyHM(shiftParsed.startHM!)} → {prettyHM(shiftParsed.endHM!)} · {shiftHours}h/day
+            </span>
+          )}
+        </div>
+        <button
+          onClick={goNextMonth}
+          className="grid size-8 place-items-center rounded-lg bg-secondary/50 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+          aria-label="Next month"
+          disabled={selectedMonth >= defaultMonth}
+        >
+          <ChevronRightIcon className="size-4" />
+        </button>
+      </div>
+
+      {/* Summary cards */}
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
         {summaryItems.map((s) => (
           <div key={s.label} className={cn("relative overflow-hidden rounded-2xl bg-gradient-to-br p-3 text-center ring-1", s.bg, s.ring)}>
@@ -152,9 +272,30 @@ function AttendanceTab({ agentId }: { agentId: string }) {
           </div>
         ))}
       </div>
+
+      {/* Auto-fill notice */}
+      <div className="flex items-start gap-2 rounded-xl border border-info/20 bg-info/5 px-3 py-2 text-[11px] text-info/90">
+        <Sparkles className="mt-0.5 size-3.5 shrink-0" />
+        <span>
+          Missing weekdays are auto-filled as <strong>Present ({shiftHours}h)</strong> based on your shift.
+          Weekends and future dates are excluded. Leaves/holidays are never overwritten.
+        </span>
+      </div>
+
+      {/* Attendance list */}
       {isLoading ? (
         <p className="py-10 text-center text-sm text-muted-foreground">Loading attendance…</p>
-      ) : history.length === 0 ? (
+      ) : isError ? (
+        <div className="flex flex-col items-center gap-3 rounded-xl border border-destructive/20 bg-destructive/5 py-8 px-4 text-center">
+          <AlertCircle className="size-6 text-destructive/70" />
+          <p className="text-sm text-muted-foreground">
+            {error instanceof Error ? error.message : "Could not load attendance."}
+          </p>
+          <button onClick={() => void refetch()} className="flex items-center gap-1.5 rounded-lg bg-secondary/40 px-4 py-1.5 text-xs font-medium hover:bg-secondary/70">
+            <RefreshCw className="size-3.5" /> Retry
+          </button>
+        </div>
+      ) : calendar.length === 0 ? (
         <p className="py-10 text-center text-sm text-muted-foreground">No attendance records yet.</p>
       ) : (
         <div className="overflow-hidden rounded-2xl border border-border/40">
@@ -162,22 +303,36 @@ function AttendanceTab({ agentId }: { agentId: string }) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/40 bg-secondary/30">
-                  {["Date", "In", "Out", "Hours", "Status"].map((h) => (
+                  {["Date", "Day", "In", "Out", "Hours", "Status"].map((h) => (
                     <th key={h} className="px-4 py-2.5 text-left text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/20">
-                {history.map((row) => (
-                  <tr key={row.id} className="transition-colors hover:bg-secondary/20">
+                {calendar.map((row) => (
+                  <tr key={row.date} className={cn("transition-colors hover:bg-secondary/20", row.autoFilled && "bg-primary/[0.03]")}>
                     <td className="px-4 py-2.5 font-mono text-xs">{formatDate(row.date)}</td>
-                    <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{formatTime(row.clock_in)}</td>
-                    <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">{formatTime(row.clock_out)}</td>
-                    <td className="px-4 py-2.5 font-mono text-xs">{hoursLabel(row.total_hours)}</td>
+                    <td className="px-4 py-2.5 text-xs text-muted-foreground">{row.weekday}</td>
+                    <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
+                      {row.record?.clock_in ? formatTime(row.record.clock_in) : row.autoFilled ? <span className="text-primary/40">auto</span> : "—"}
+                    </td>
+                    <td className="px-4 py-2.5 font-mono text-xs text-muted-foreground">
+                      {row.record?.clock_out ? formatTime(row.record.clock_out) : row.autoFilled ? <span className="text-primary/40">auto</span> : "—"}
+                    </td>
+                    <td className="px-4 py-2.5 font-mono text-xs">
+                      {row.hours > 0 ? (
+                        <span className={cn(row.autoFilled && "text-primary/70")}>{hoursLabel(row.hours)}</span>
+                      ) : "—"}
+                    </td>
                     <td className="px-4 py-2.5">
-                      <span className={cn("inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold", STATUS_COLOR[row.status] ?? "")}>
-                        {labelize(row.status)}
-                      </span>
+                      {row.status ? (
+                        <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold", STATUS_COLOR[row.status] ?? "", row.autoFilled && "ring-1 ring-primary/20")}>
+                          {labelize(row.status)}
+                          {row.autoFilled && <Sparkles className="size-2.5" />}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground/40">—</span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -367,13 +522,40 @@ function SalaryTab({ agent }: { agent: AgentWithRefs }) {
 // ── monthly sales tab (view-only for agents) ──────────────────────────────────
 
 function MySalesTab({ agentId }: { agentId: string }) {
-  const { data: sales = [], isLoading } = useAgentMonthlySales(agentId);
+  const { data: sales = [], isLoading, isError, error, refetch } = useAgentMonthlySales(agentId);
 
   const total = sales.reduce((s, r) => s + Number(r.amount), 0);
   const best = sales.length ? Math.max(...sales.map((s) => Number(s.amount))) : 0;
   const avg = sales.length ? total / sales.length : 0;
 
-  if (isLoading) return <p className="py-10 text-center text-sm text-muted-foreground">Loading sales…</p>;
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-10">
+        <span className="size-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        <p className="text-sm text-muted-foreground">Loading sales data…</p>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center gap-3 rounded-xl border border-destructive/20 bg-destructive/5 py-8 px-4 text-center">
+        <AlertCircle className="size-6 text-destructive/70" />
+        <div>
+          <p className="text-sm font-semibold text-destructive">Could not load sales data</p>
+          <p className="mt-1 max-w-xs text-xs text-muted-foreground">
+            {error instanceof Error ? error.message : "Check your connection or try again."}
+          </p>
+        </div>
+        <button
+          onClick={() => void refetch()}
+          className="flex items-center gap-1.5 rounded-lg bg-secondary/40 px-4 py-1.5 text-xs font-medium transition-colors hover:bg-secondary/70"
+        >
+          <RefreshCw className="size-3.5" /> Retry
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -693,30 +875,31 @@ function MyProfilePage() {
         </div>
       </div>
 
-      {/* ── TIKTOK-STYLE SEGMENTED TAB BAR (sticky) ──────────────────────────
-       * Centred segmented control that sticks under the profile header.
+      {/* ── STYLISH SEGMENTED TAB BAR (sticky) ────────────────────────────────
+       * Horizontal scrollable pill bar with icon + label always visible.
+       * Active tab gets gradient background + glow.
        */}
       <Tabs defaultValue="personal" className="mt-4 space-y-4">
         <div className="sticky top-14 z-20 -mx-1 px-1 lg:top-6">
-          <div className="no-scrollbar no-scrollbar-webkit overflow-x-auto">
-            <TabsList className="flex w-max min-w-full justify-center gap-1 rounded-2xl border border-border/40 bg-card/80 p-1 backdrop-blur-lg">
+          <div className="no-scrollbar no-scrollbar-webkit overflow-x-auto pb-1">
+            <TabsList className="flex w-max min-w-full gap-1.5 rounded-2xl border border-border/40 bg-card/80 p-1.5 backdrop-blur-lg">
               {[
                 { v: "personal", label: "Personal", icon: User },
                 { v: "employment", label: "Work", icon: Briefcase },
                 { v: "uploads", label: "Uploads", icon: Upload },
                 { v: "attendance", label: "Attendance", icon: Calendar },
                 { v: "sales", label: "Sales", icon: TrendingUp },
-                { v: "salary", label: "Salary", icon: Banknote },
+                { v: "salary", label: "Salary", icon: Wallet },
                 { v: "reports", label: "Reports", icon: BarChart3 },
-                { v: "documents", label: "Docs", icon: FileText },
+                { v: "documents", label: "Documents", icon: FileText },
               ].map((t) => (
                 <TabsTrigger
                   key={t.v}
                   value={t.v}
-                  className="flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-medium transition-all data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+                  className="flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2 text-xs font-semibold transition-all duration-200 data-[state=active]:bg-gradient-to-br data-[state=active]:from-primary data-[state=active]:to-primary/85 data-[state=active]:text-primary-foreground data-[state=active]:shadow-pop-primary"
                 >
-                  <t.icon className="size-3.5" />
-                  <span className="hidden sm:inline">{t.label}</span>
+                  <t.icon className="size-4" strokeWidth={2.2} />
+                  <span>{t.label}</span>
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -834,7 +1017,7 @@ function MyProfilePage() {
 
         {/* ATTENDANCE */}
         <TabsContent value="attendance" className="glass rounded-2xl p-5">
-          <AttendanceTab agentId={agent.id} />
+          <AttendanceTab agentId={agent.id} shiftTiming={agent.shift_timing} />
         </TabsContent>
 
         {/* MY SALES */}
@@ -873,6 +1056,44 @@ function scoreTone(s: number) {
 function ReportsTab({ agentId }: { agentId: string }) {
   const { data: reports = [], isLoading } = useAgentReports(agentId);
 
+  // Default to the latest report's month, or current month if no reports
+  const today = new Date();
+  const defaultMonth = reports.length
+    ? reports[0]!.month.slice(0, 7)
+    : `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+  const [selectedMonth, setSelectedMonth] = useState(defaultMonth);
+
+  // Available months (from reports)
+  const availableMonths = useMemo(() => {
+    const set = new Set<string>();
+    reports.forEach((r) => set.add(r.month.slice(0, 7)));
+    return Array.from(set).sort().reverse();
+  }, [reports]);
+
+  // Filtered reports for the selected month
+  const filtered = useMemo(
+    () => reports.filter((r) => r.month.slice(0, 7) === selectedMonth),
+    [reports, selectedMonth],
+  );
+
+  // Month navigation
+  const goPrevMonth = () => {
+    const [y, m] = selectedMonth.split("-").map(Number);
+    const d = new Date(y!, m! - 1, 1);
+    d.setMonth(d.getMonth() - 1);
+    setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  };
+  const goNextMonth = () => {
+    const [y, m] = selectedMonth.split("-").map(Number);
+    const d = new Date(y!, m! - 1, 1);
+    d.setMonth(d.getMonth() + 1);
+    if (d > new Date(today.getFullYear(), today.getMonth(), 1)) return;
+    setSelectedMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  };
+  const currentMonthStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}`;
+  const monthLabel = new Date(selectedMonth + "-01").toLocaleDateString("en-PK", { year: "numeric", month: "long" });
+  const hasReportForMonth = filtered.length > 0;
+
   if (isLoading) {
     return (
       <div className="flex h-32 items-center justify-center">
@@ -895,95 +1116,137 @@ function ReportsTab({ agentId }: { agentId: string }) {
     );
   }
 
-  const latest = reports[0]!;
+  const latest = filtered[0] ?? reports[0]!;
   const avgOverall = reports.reduce((s, r) => s + r.overall_score, 0) / reports.length;
 
   return (
     <div className="space-y-5">
-      {/* hero summary */}
-      <div className="relative overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/8 to-transparent p-5">
-        <div className="absolute -right-8 -top-8 size-32 rounded-full bg-primary/8 blur-2xl" />
-        <div className="relative flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-primary/70">
-              <Trophy className="size-3.5" /> Latest Overall Score
-            </p>
-            <p className={cn("mt-1 font-mono text-3xl font-extrabold tabular-nums", scoreTone(latest.overall_score))}>
-              {latest.overall_score.toFixed(0)}
-              <span className="text-base text-muted-foreground/60">/100</span>
-            </p>
-            <p className="mt-0.5 text-xs text-muted-foreground/70">
-              {new Date(latest.month).toLocaleDateString("en-PK", { year: "numeric", month: "long" })}
-              {latest.headline && ` · "${latest.headline}"`}
-            </p>
+      {/* Month navigator */}
+      <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/40 bg-secondary/20 px-4 py-3">
+        <button
+          onClick={goPrevMonth}
+          className="grid size-8 place-items-center rounded-lg bg-secondary/50 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground active:scale-95"
+          aria-label="Previous month"
+        >
+          <ChevronLeft className="size-4" />
+        </button>
+        <div className="flex flex-col items-center gap-0.5">
+          <div className="flex items-center gap-2">
+            <CalendarDays className="size-4 text-primary" />
+            <span className="font-display text-sm font-semibold">{monthLabel}</span>
           </div>
-          <div className="flex flex-col items-end gap-2">
-            <div className="rounded-xl border border-white/8 bg-black/20 px-3 py-2 text-right">
-              <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60">Avg (all reports)</p>
-              <p className={cn("font-mono text-lg font-bold tabular-nums", scoreTone(avgOverall))}>
-                {avgOverall.toFixed(0)}/100
+          <span className="text-[10px] text-muted-foreground/70">
+            {hasReportForMonth ? `${filtered.length} report(s)` : "No report for this month"}
+          </span>
+        </div>
+        <button
+          onClick={goNextMonth}
+          className="grid size-8 place-items-center rounded-lg bg-secondary/50 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+          aria-label="Next month"
+          disabled={selectedMonth >= currentMonthStr}
+        >
+          <ChevronRightIcon className="size-4" />
+        </button>
+      </div>
+
+      {!hasReportForMonth ? (
+        <div className="flex flex-col items-center gap-3 py-8 text-center">
+          <div className="grid size-12 place-items-center rounded-2xl bg-secondary/40 ring-1 ring-border">
+            <BarChart3 className="size-5 text-muted-foreground" />
+          </div>
+          <p className="text-sm font-medium">No report for {monthLabel}</p>
+          <p className="max-w-xs text-xs text-muted-foreground">
+            Reports are published by your admin at the end of each month. Check back later.
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* hero summary */}
+          <div className="relative overflow-hidden rounded-2xl border border-primary/15 bg-gradient-to-br from-primary/8 to-transparent p-5">
+            <div className="absolute -right-8 -top-8 size-32 rounded-full bg-primary/8 blur-2xl" />
+            <div className="relative flex flex-wrap items-center justify-between gap-4">
+              <div>
+                <p className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-primary/70">
+                  <Trophy className="size-3.5" /> Overall Score
+                </p>
+                <p className={cn("mt-1 font-mono text-3xl font-extrabold tabular-nums", scoreTone(latest.overall_score))}>
+                  {latest.overall_score.toFixed(0)}
+                  <span className="text-base text-muted-foreground/60">/100</span>
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground/70">
+                  {new Date(latest.month).toLocaleDateString("en-PK", { year: "numeric", month: "long" })}
+                  {latest.headline && ` · "${latest.headline}"`}
+                </p>
+              </div>
+              <div className="flex flex-col items-end gap-2">
+                <div className="rounded-xl border border-white/8 bg-black/20 px-3 py-2 text-right">
+                  <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60">Avg (all reports)</p>
+                  <p className={cn("font-mono text-lg font-bold tabular-nums", scoreTone(avgOverall))}>
+                    {avgOverall.toFixed(0)}/100
+                  </p>
+                </div>
+                <Button asChild size="sm" variant="outline">
+                  <Link to="/reports">
+                    View All <ArrowRight className="size-3" />
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* latest scores grid */}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {[
+              { label: "Performance", value: latest.performance_score, icon: Award },
+              { label: "Behavior", value: latest.behavior_score, icon: Smile },
+              { label: "Attendance", value: latest.attendance_score, icon: CheckCircle2 },
+              { label: "Punctuality", value: latest.punctuality_score, icon: Clock },
+            ].map((s) => (
+              <div key={s.label} className="rounded-xl border border-white/5 bg-white/[0.03] p-3">
+                <s.icon className={cn("size-4", scoreTone(s.value))} />
+                <p className={cn("mt-1.5 font-mono text-xl font-bold tabular-nums", scoreTone(s.value))}>
+                  {s.value.toFixed(0)}
+                </p>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">{s.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* salary + sales preview */}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-primary/15 bg-primary/5 p-4">
+              <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-primary/70">
+                <Banknote className="size-3" /> Net Salary
+              </div>
+              <p className="mt-1.5 font-mono text-2xl font-bold text-primary">{formatPKR(latest.net_salary)}</p>
+              <p className="mt-0.5 text-[10px] text-muted-foreground/60">
+                Base {formatPKR(latest.base_salary)} · +{formatPKR(latest.bonus)} · −{formatPKR(latest.deduction)}
               </p>
             </div>
-            <Button asChild size="sm" variant="outline">
-              <Link to="/reports">
-                View All <ArrowRight className="size-3" />
-              </Link>
-            </Button>
+            <div className="rounded-xl border border-info/15 bg-info/5 p-4">
+              <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-info/70">
+                <Target className="size-3" /> Sales Achievement
+              </div>
+              <p className="mt-1.5 font-mono text-2xl font-bold text-info">{latest.achievement_pct.toFixed(1)}%</p>
+              <p className="mt-0.5 text-[10px] text-muted-foreground/60">
+                {formatPKR(latest.total_sales)} of {formatPKR(latest.sales_target)}
+              </p>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* latest scores grid */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {[
-          { label: "Performance", value: latest.performance_score, icon: Award },
-          { label: "Behavior", value: latest.behavior_score, icon: Smile },
-          { label: "Attendance", value: latest.attendance_score, icon: CheckCircle2 },
-          { label: "Punctuality", value: latest.punctuality_score, icon: Clock },
-        ].map((s) => (
-          <div key={s.label} className="rounded-xl border border-white/5 bg-white/[0.03] p-3">
-            <s.icon className={cn("size-4", scoreTone(s.value))} />
-            <p className={cn("mt-1.5 font-mono text-xl font-bold tabular-nums", scoreTone(s.value))}>
-              {s.value.toFixed(0)}
+          {/* mini history */}
+          <div>
+            <p className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
+              <Activity className="size-3" /> Recent Reports
             </p>
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground/60">{s.label}</p>
+            <div className="space-y-1.5">
+              {reports.slice(0, 6).map((r) => (
+                <MiniReportRow key={r.id} report={r} />
+              ))}
+            </div>
           </div>
-        ))}
-      </div>
-
-      {/* salary + sales preview */}
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl border border-primary/15 bg-primary/5 p-4">
-          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-primary/70">
-            <Banknote className="size-3" /> Net Salary
-          </div>
-          <p className="mt-1.5 font-mono text-2xl font-bold text-primary">{formatPKR(latest.net_salary)}</p>
-          <p className="mt-0.5 text-[10px] text-muted-foreground/60">
-            Base {formatPKR(latest.base_salary)} · +{formatPKR(latest.bonus)} · −{formatPKR(latest.deduction)}
-          </p>
-        </div>
-        <div className="rounded-xl border border-info/15 bg-info/5 p-4">
-          <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-info/70">
-            <Target className="size-3" /> Sales Achievement
-          </div>
-          <p className="mt-1.5 font-mono text-2xl font-bold text-info">{latest.achievement_pct.toFixed(1)}%</p>
-          <p className="mt-0.5 text-[10px] text-muted-foreground/60">
-            {formatPKR(latest.total_sales)} of {formatPKR(latest.sales_target)}
-          </p>
-        </div>
-      </div>
-
-      {/* mini history */}
-      <div>
-        <p className="mb-2 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/60">
-          <Activity className="size-3" /> Recent Reports
-        </p>
-        <div className="space-y-1.5">
-          {reports.slice(0, 6).map((r) => (
-            <MiniReportRow key={r.id} report={r} />
-          ))}
-        </div>
-      </div>
+        </>
+      )}
     </div>
   );
 }

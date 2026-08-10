@@ -6,6 +6,7 @@ export const SHIFT_TIMINGS = [
   "Morning (09:00 - 18:00)",
   "Evening (14:00 - 23:00)",
   "Night (22:00 - 07:00)",
+  "Night (21:00 - 06:00)",
   "Flexible",
 ] as const;
 export const AGENT_STATUSES = ["active", "inactive", "suspended", "resigned"] as const;
