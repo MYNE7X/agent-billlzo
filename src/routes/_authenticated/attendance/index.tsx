@@ -32,10 +32,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { StatusBadge } from "@/components/billzo/StatusBadge";
 import { formatDate, formatTime, hoursLabel, labelize, todayISO } from "@/lib/billzo";
-import { useAttendance, useAttendanceRange, useMyAgent, useAgents, useDeleteAttendance } from "@/lib/queries";
+import { useAttendance, useAttendanceRange, useMyAgent, useAgents, useDeleteAttendance, useUpdateAttendance, logEdit } from "@/lib/queries";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import { EditorBubble } from "@/components/billzo/EditorBubble";
 import {
   AttendanceEditDialog,
   AttendanceAddDialog,
@@ -184,6 +185,17 @@ function AttendanceCard({
             <span />
           )}
           <div className="flex shrink-0 items-center gap-1">
+            {/* Editor bubble — shows who last adjusted */}
+            {row.created_by && (
+              <EditorBubble
+                editedBy={row.created_by}
+                editedAt={row.updated_at}
+                entityType="attendance"
+                entityId={row.id}
+                section="Attendance Record"
+                label="Adjusted by"
+              />
+            )}
             <AttendanceEditDialog
               row={row}
               trigger={
@@ -859,6 +871,17 @@ function AttendanceTableRow({
       {isStaff && (
         <td className="px-4 py-3.5 text-right">
           <div className="flex items-center justify-end gap-1">
+            {/* Editor bubble — shows who last adjusted this record */}
+            {row.created_by && (
+              <EditorBubble
+                editedBy={row.created_by}
+                editedAt={row.updated_at}
+                entityType="attendance"
+                entityId={row.id}
+                section="Attendance Record"
+                label="Adjusted by"
+              />
+            )}
             <AttendanceEditDialog
               row={row}
               trigger={

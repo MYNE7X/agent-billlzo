@@ -14,8 +14,9 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import type { Database } from "@/integrations/supabase/types";
-import { useAgents, useInsertAttendance, useUpdateAttendance, type AttendanceRow } from "@/lib/queries";
+import { useAgents, useInsertAttendance, useUpdateAttendance, logEdit, type AttendanceRow } from "@/lib/queries";
 import { ATTENDANCE_STATUSES, labelize, todayISO } from "@/lib/billzo";
+import { useAuth } from "@/hooks/useAuth";
 
 type AttendanceStatus = Database["public"]["Enums"]["attendance_status"];
 
@@ -62,6 +63,7 @@ type EditProps = {
 };
 
 export function AttendanceEditDialog({ row, trigger }: EditProps) {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [clockIn, setClockIn] = useState(isoToTime(row.clock_in));
   const [clockOut, setClockOut] = useState(isoToTime(row.clock_out));
@@ -91,6 +93,13 @@ export function AttendanceEditDialog({ row, trigger }: EditProps) {
         },
       });
       toast.success(`Attendance adjusted for ${row.agents?.full_name ?? "agent"}.`);
+      // Log the adjustment for the editor bubble
+      logEdit({
+        entityType: "attendance",
+        entityId: row.id,
+        section: "Attendance Record",
+        editedBy: user?.id ?? null,
+      });
       setOpen(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not save.");
