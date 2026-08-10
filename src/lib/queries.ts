@@ -236,7 +236,8 @@ export function useAgentMonthAttendance(agentId?: string, month?: string) {
         .eq("agent_id", agentId!)
         .gte("date", from)
         .lte("date", to)
-        .order("date", { ascending: true });
+        .order("date", { ascending: false })
+        .order("updated_at", { ascending: false });
       if (error) throw error;
       return (data ?? []) as Attendance[];
     },
