@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthenticatedAdminsRouteImport } from './routes/_authenticated/admins'
+import { Route as AuthenticatedAttendanceRequestsRouteImport } from './routes/_authenticated/attendance-requests'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedExpensesRouteImport } from './routes/_authenticated/expenses'
 import { Route as AuthenticatedMyProfileRouteImport } from './routes/_authenticated/my-profile'
@@ -39,6 +40,12 @@ const AuthenticatedAdminsRoute = AuthenticatedAdminsRouteImport.update({
   path: '/admins',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAttendanceRequestsRoute =
+  AuthenticatedAttendanceRequestsRouteImport.update({
+    id: '/attendance-requests',
+    path: '/attendance-requests',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -110,6 +117,7 @@ const AuthenticatedReportsManageRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admins': typeof AuthenticatedAdminsRoute
+  '/attendance-requests': typeof AuthenticatedAttendanceRequestsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/expenses': typeof AuthenticatedExpensesRoute
   '/my-profile': typeof AuthenticatedMyProfileRoute
@@ -126,6 +134,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admins': typeof AuthenticatedAdminsRoute
+  '/attendance-requests': typeof AuthenticatedAttendanceRequestsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/expenses': typeof AuthenticatedExpensesRoute
   '/my-profile': typeof AuthenticatedMyProfileRoute
@@ -144,6 +153,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/_authenticated/admins': typeof AuthenticatedAdminsRoute
+  '/_authenticated/attendance-requests': typeof AuthenticatedAttendanceRequestsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/expenses': typeof AuthenticatedExpensesRoute
   '/_authenticated/my-profile': typeof AuthenticatedMyProfileRoute
@@ -162,6 +172,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admins'
+    | '/attendance-requests'
     | '/dashboard'
     | '/expenses'
     | '/my-profile'
@@ -178,6 +189,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admins'
+    | '/attendance-requests'
     | '/dashboard'
     | '/expenses'
     | '/my-profile'
@@ -195,6 +207,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/_authenticated/admins'
+    | '/_authenticated/attendance-requests'
     | '/_authenticated/dashboard'
     | '/_authenticated/expenses'
     | '/_authenticated/my-profile'
@@ -235,6 +248,13 @@ declare module '@tanstack/react-router' {
       path: '/admins'
       fullPath: '/admins'
       preLoaderRoute: typeof AuthenticatedAdminsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/attendance-requests': {
+      id: '/_authenticated/attendance-requests'
+      path: '/attendance-requests'
+      fullPath: '/attendance-requests'
+      preLoaderRoute: typeof AuthenticatedAttendanceRequestsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard': {
@@ -326,6 +346,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminsRoute: typeof AuthenticatedAdminsRoute
+  AuthenticatedAttendanceRequestsRoute: typeof AuthenticatedAttendanceRequestsRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedExpensesRoute: typeof AuthenticatedExpensesRoute
   AuthenticatedMyProfileRoute: typeof AuthenticatedMyProfileRoute
@@ -342,6 +363,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminsRoute: AuthenticatedAdminsRoute,
+  AuthenticatedAttendanceRequestsRoute: AuthenticatedAttendanceRequestsRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedExpensesRoute: AuthenticatedExpensesRoute,
   AuthenticatedMyProfileRoute: AuthenticatedMyProfileRoute,
