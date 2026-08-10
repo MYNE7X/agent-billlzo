@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { Fingerprint, Clock, FileStack, Loader2, ShieldCheck, Zap, ArrowRight } from "lucide-react";
+import { Loader2, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { FounderBubble } from "@/components/billzo/FounderBubble";
 
 export const Route = createFileRoute("/")({
   component: AuthPage,
@@ -121,34 +122,12 @@ function AuthPage() {
             Complete agent profiles, secure document vault, and real-time attendance tracking —
             built to scale with every future Billzo module.
           </p>
-          <ul className="mt-8 space-y-3">
-            {[
-              { icon: Fingerprint, text: "Role-based access for Super Admin, Admin & Agent" },
-              { icon: FileStack,    text: "Encrypted document storage with instant preview" },
-              { icon: Clock,        text: "Clock in / out with automatic working-hour totals" },
-              { icon: ShieldCheck,  text: "Office-network lock for attendance integrity" },
-            ].map((f, i) => (
-              <li
-                key={f.text}
-                className="aurora-border glass animate-rise flex items-center gap-3 rounded-xl px-4 py-3 text-sm"
-                style={{ animationDelay: `${i * 90}ms` }}
-              >
-                <span className="aurora-border-ring" />
-                <span className="relative grid size-7 shrink-0 place-items-center rounded-lg bg-primary/15 text-primary">
-                  <f.icon className="size-3.5" strokeWidth={2.2} />
-                </span>
-                <span className="relative">{f.text}</span>
-              </li>
-            ))}
-          </ul>
         </div>
 
+        {/* ── Footer with Founder Bubble ─────────────────────────────────── */}
         <div className="flex items-center justify-between">
           <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} Billzo. All rights reserved.</p>
-          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/60">
-            <Zap className="size-3 fill-primary text-primary" />
-            Crafted by Aziz · Myne7x
-          </div>
+          <FounderBubble />
         </div>
       </section>
 
@@ -276,6 +255,11 @@ function AuthPage() {
               </form>
             </TabsContent>
           </Tabs>
+
+          {/* Mobile founder bubble (below the auth card) */}
+          <div className="mt-6 flex justify-center border-t border-border/40 pt-4 lg:hidden">
+            <FounderBubble />
+          </div>
         </div>
       </section>
     </div>
