@@ -38,9 +38,11 @@ import {
   ShieldAlert,
   Wallet,
   PieChart,
+  Inbox,
 } from "lucide-react";
 
 import { StatCard } from "@/components/billzo/StatCard";
+import { AgentAttendanceRequests } from "@/components/attendance/AgentAttendanceRequests";
 import { StatusBadge } from "@/components/billzo/StatusBadge";
 import { Button } from "@/components/ui/button";
 import {
@@ -48,6 +50,7 @@ import {
   useInsertAttendance, useUpdateAttendance,
   useNetworkSettings, useLogAttendanceViolation,
   useAllReports, useExpenses, useAttendanceViolations,
+  usePendingRequestCount,
 } from "@/lib/queries";
 import { formatDate, formatPKR, formatTime, hoursLabel, todayISO, initials, labelize } from "@/lib/billzo";
 import { useAuth } from "@/hooks/useAuth";
@@ -255,6 +258,8 @@ function AgentDashboard() {
       </div>
     );
   }
+
+  if (!agent) return null;
 
   return (
     <div className="space-y-6">
@@ -703,6 +708,11 @@ function AgentDashboard() {
           </Button>
         </div>
       </div>
+
+      {/* ── ATTENDANCE REQUESTS ── */}
+      <div className="animate-rise glass rounded-2xl p-5">
+        <AgentAttendanceRequests agentId={agent.id} createdBy={user?.id} />
+      </div>
     </div>
   );
 }
@@ -873,6 +883,43 @@ function last7Days() {
 
 // ── main staff dashboard ────────────────────────────────────────────────────
 
+// ── Pending Requests Card (staff dashboard) ──────────────────────────────────
+
+function PendingRequestsCard() {
+  const { data: pendingCount = 0 } = usePendingRequestCount();
+  return (
+    <Link
+      to="/attendance-requests"
+      className="aurora-border glass glass-hover animate-rise group relative flex items-center gap-4 overflow-hidden rounded-2xl p-5 hover:glass-hover-on"
+    >
+      <span className="aurora-border-ring" />
+      <div
+        className="absolute -right-8 -top-8 size-28 rounded-full opacity-40 blur-2xl"
+        style={{ background: "radial-gradient(circle, oklch(0.81 0.15 78 / 0.4), transparent 70%)" }}
+      />
+      <span className="relative grid size-12 shrink-0 place-items-center rounded-xl bg-amber-500/15 text-amber-400 ring-1 ring-amber-500/25">
+        <Inbox className="size-5" strokeWidth={2.2} />
+        {pendingCount > 0 && (
+          <span className="absolute -right-1 -top-1 grid min-w-[20px] place-items-center rounded-full bg-amber-500 px-1 text-[10px] font-bold text-white">
+            {pendingCount > 99 ? "99+" : pendingCount}
+          </span>
+        )}
+      </span>
+      <div className="relative min-w-0 flex-1">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">
+          Pending Attendance Requests
+        </p>
+        <p className="font-display mt-0.5 text-2xl font-bold tabular-nums">
+          {pendingCount} <span className="text-sm font-normal text-muted-foreground">Pending</span>
+        </p>
+        <p className="mt-0.5 text-xs text-primary/70 transition-colors group-hover:text-primary">
+          Click to review →
+        </p>
+      </div>
+    </Link>
+  );
+}
+
 function StaffDashboard() {
   const { profile } = useAuth();
   const today = todayISO();
@@ -1024,6 +1071,9 @@ function StaffDashboard() {
         <StatCard label="Late Today" value={count("late")} icon={Clock} tone="warning" delay={180} />
         <StatCard label="On Leave" value={count("leave")} icon={PlaneTakeoff} tone="info" delay={240} />
       </section>
+
+      {/* ── PENDING REQUESTS CARD (staff only) ───────────────────────────────── */}
+      <PendingRequestsCard />
 
       {/* ── CHARTS ROW 1 (donut + 7-day trend) ──────────────────────────────── */}
       <section className="grid gap-4 lg:grid-cols-2">

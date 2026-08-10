@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
+import { LEAVE_REQUEST_TYPES, ADJUSTMENT_REQUEST_TYPES } from "@/lib/billzo";
 
 export type Agent = Database["public"]["Tables"]["agents"]["Row"];
 export type AgentInsert = Database["public"]["Tables"]["agents"]["Insert"];
@@ -1164,4 +1165,334 @@ export function useOfficesMap() {
     return m;
   }, [offices]);
   return map;
+}
+
+// ============================================================================
+// ATTENDANCE REQUESTS
+// ============================================================================
+
+export type AttendanceRequest = Database["public"]["Tables"]["attendance_requests"]["Row"];
+
+export type AttendanceRequestWithAgent = AttendanceRequest & {
+  agents: {
+    id: string;
+    full_name: string;
+    employee_id: string;
+    profile_picture_url: string | null;
+    office_id: string | null;
+    departments: { name: string } | null;
+  } | null;
+};
+
+const REQUEST_SELECT = "*, agents:agent_id(id, full_name, employee_id, profile_picture_url, office_id, departments:department_id(name))";
+
+/** All requests — staff only. Optional status filter. */
+export function useAttendanceRequests(statusFilter?: string) {
+  return useQuery({
+    queryKey: ["attendance-requests", statusFilter ?? "all"],
+    queryFn: async () => {
+      let q = supabase
+        .from("attendance_requests")
+        .select(REQUEST_SELECT)
+        .order("created_at", { ascending: false });
+      if (statusFilter && statusFilter !== "all") q = q.eq("status", statusFilter);
+      const { data, error } = await q;
+      if (error) {
+        // Resilient: if table doesn't exist yet (migration pending), return []
+        if (error.code === "PGRST205" || error.code === "42P01") return [];
+        throw error;
+      }
+      return (data ?? []) as unknown as AttendanceRequestWithAgent[];
+    },
+    retry: (failureCount, error) => {
+      if (error && (error.code === "PGRST205" || error.code === "42P01")) return false;
+      return failureCount < 2;
+    },
+  });
+}
+
+/** Count of pending requests — for dashboard card. Staff only. */
+export function usePendingRequestCount() {
+  return useQuery({
+    queryKey: ["attendance-requests-pending-count"],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from("attendance_requests")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "pending");
+      if (error) {
+        if (error.code === "PGRST205" || error.code === "42P01") return 0;
+        throw error;
+      }
+      return count ?? 0;
+    },
+    retry: (failureCount, error) => {
+      if (error && (error.code === "PGRST205" || error.code === "42P01")) return false;
+      return failureCount < 2;
+    },
+    staleTime: 15_000,
+  });
+}
+
+/** Requests for a specific agent (agent's own view). */
+export function useAgentAttendanceRequests(agentId?: string) {
+  return useQuery({
+    queryKey: ["agent-attendance-requests", agentId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("attendance_requests")
+        .select("*")
+        .eq("agent_id", agentId!)
+        .order("created_at", { ascending: false });
+      if (error) {
+        if (error.code === "PGRST205" || error.code === "42P01") return [];
+        throw error;
+      }
+      return (data ?? []) as AttendanceRequest[];
+    },
+    enabled: Boolean(agentId),
+    retry: (failureCount, error) => {
+      if (error && (error.code === "PGRST205" || error.code === "42P01")) return false;
+      return failureCount < 2;
+    },
+  });
+}
+
+/** Create a new request (agent). */
+export function useCreateAttendanceRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      agent_id: string;
+      request_type: string;
+      attendance_date?: string | null;
+      from_date?: string | null;
+      to_date?: string | null;
+      reason: string;
+      details?: string | null;
+      attachment_url?: string | null;
+      requested_clock_in?: string | null;
+      requested_clock_out?: string | null;
+      requested_status?: string | null;
+      created_by?: string | null;
+    }) => {
+      const { data, error } = await supabase
+        .from("attendance_requests")
+        .insert({
+          agent_id: input.agent_id,
+          request_type: input.request_type,
+          attendance_date: input.attendance_date ?? null,
+          from_date: input.from_date ?? null,
+          to_date: input.to_date ?? null,
+          reason: input.reason,
+          details: input.details ?? null,
+          attachment_url: input.attachment_url ?? null,
+          requested_clock_in: input.requested_clock_in ?? null,
+          requested_clock_out: input.requested_clock_out ?? null,
+          requested_status: input.requested_status ?? null,
+          created_by: input.created_by ?? null,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data as AttendanceRequest;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["agent-attendance-requests"] });
+      void qc.invalidateQueries({ queryKey: ["attendance-requests"] });
+      void qc.invalidateQueries({ queryKey: ["attendance-requests-pending-count"] });
+    },
+  });
+}
+
+/** Update own pending request (agent can edit or cancel). */
+export function useUpdateAttendanceRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      id: string;
+      request_type?: string;
+      attendance_date?: string | null;
+      from_date?: string | null;
+      to_date?: string | null;
+      reason?: string;
+      details?: string | null;
+      requested_clock_in?: string | null;
+      requested_clock_out?: string | null;
+      requested_status?: string | null;
+      status?: string; // agent can set to 'cancelled'
+    }) => {
+      const { data, error } = await supabase
+        .from("attendance_requests")
+        .update({
+          request_type: input.request_type,
+          attendance_date: input.attendance_date,
+          from_date: input.from_date,
+          to_date: input.to_date,
+          reason: input.reason,
+          details: input.details,
+          requested_clock_in: input.requested_clock_in,
+          requested_clock_out: input.requested_clock_out,
+          requested_status: input.requested_status,
+          status: input.status,
+        })
+        .eq("id", input.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as AttendanceRequest;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["agent-attendance-requests"] });
+      void qc.invalidateQueries({ queryKey: ["attendance-requests"] });
+      void qc.invalidateQueries({ queryKey: ["attendance-requests-pending-count"] });
+    },
+  });
+}
+
+/**
+ * Approve/reject a request (staff only).
+ * When approving an adjustment-type request, also updates the attendance record
+ * + writes an audit row.
+ */
+export function useReviewAttendanceRequest() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      request: AttendanceRequestWithAgent;
+      decision: "approved" | "rejected";
+      admin_note?: string;
+      rejection_reason?: string;
+      reviewer_id: string;
+    }) => {
+      const { request, decision, admin_note, rejection_reason, reviewer_id } = input;
+
+      // 1. Update the request
+      const { data: updated, error: updateErr } = await supabase
+        .from("attendance_requests")
+        .update({
+          status: decision,
+          admin_note: admin_note ?? null,
+          rejection_reason: decision === "rejected" ? (rejection_reason ?? null) : null,
+          reviewed_by: reviewer_id,
+          reviewed_at: new Date().toISOString(),
+        })
+        .eq("id", request.id)
+        .select()
+        .single();
+      if (updateErr) throw updateErr;
+
+      // 2. If approved + adjustment type → update attendance + audit
+      if (decision === "approved" && request.agents) {
+        await applyAttendanceAdjustment(request, reviewer_id);
+      }
+
+      return updated;
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ["attendance-requests"] });
+      void qc.invalidateQueries({ queryKey: ["agent-attendance-requests"] });
+      void qc.invalidateQueries({ queryKey: ["attendance-requests-pending-count"] });
+      void qc.invalidateQueries({ queryKey: ["attendance"] });
+      void qc.invalidateQueries({ queryKey: ["attendance-history"] });
+    },
+  });
+}
+
+/**
+ * Helper: when a request is approved, update the attendance record + audit.
+ * - Leave-type → set status to 'leave' for the date range
+ * - Missing check-in/out → set the requested clock_in/out
+ * - Adjustment → set requested clock_in/out/status
+ */
+async function applyAttendanceAdjustment(
+  request: AttendanceRequestWithAgent,
+  reviewerId: string,
+) {
+  const agentId = request.agent_id;
+  const isLeave = LEAVE_REQUEST_TYPES.has(request.request_type);
+  const isAdjustment = ADJUSTMENT_REQUEST_TYPES.has(request.request_type);
+
+  if (!isLeave && !isAdjustment) return;
+
+  // Build the list of dates to update
+  const dates: string[] = [];
+  if (request.from_date && request.to_date) {
+    // Multi-day leave
+    const start = new Date(request.from_date);
+    const end = new Date(request.to_date);
+    for (let d = start; d <= end; d.setDate(d.getDate() + 1)) {
+      dates.push(d.toISOString().slice(0, 10));
+    }
+  } else if (request.attendance_date) {
+    dates.push(request.attendance_date);
+  }
+
+  for (const dateStr of dates) {
+    // Fetch existing attendance record (if any)
+    const { data: existing } = await supabase
+      .from("attendance")
+      .select("*")
+      .eq("agent_id", agentId)
+      .eq("date", dateStr)
+      .maybeSingle();
+
+    const oldRecord = existing as {
+      id: string;
+      clock_in: string | null;
+      clock_out: string | null;
+      total_hours: number | null;
+      status: string;
+    } | null;
+
+    // Build the new values
+    let newClockIn = oldRecord?.clock_in ?? null;
+    let newClockOut = oldRecord?.clock_out ?? null;
+    let newStatus = oldRecord?.status ?? "present";
+
+    if (isLeave) {
+      newStatus = "leave";
+    } else {
+      // Adjustment types
+      if (request.requested_clock_in) newClockIn = request.requested_clock_in;
+      if (request.requested_clock_out) newClockOut = request.requested_clock_out;
+      if (request.requested_status) newStatus = request.requested_status;
+    }
+
+    // Upsert the attendance record
+    const { data: upserted, error: upsertErr } = await supabase
+      .from("attendance")
+      .upsert({
+        id: oldRecord?.id,
+        agent_id: agentId,
+        date: dateStr,
+        clock_in: newClockIn,
+        clock_out: newClockOut,
+        status: newStatus as "present" | "absent" | "late" | "half_day" | "leave" | "holiday" | "weekly_off",
+        created_by: reviewerId,
+      })
+      .select()
+      .single();
+
+    if (upsertErr) {
+      console.error("[applyAttendanceAdjustment] upsert error:", upsertErr);
+      continue;
+    }
+
+    // Write audit row
+    await supabase.from("attendance_adjustment_audit").insert({
+      request_id: request.id,
+      attendance_id: upserted?.id ?? null,
+      agent_id: agentId,
+      original_clock_in: oldRecord?.clock_in ?? null,
+      original_clock_out: oldRecord?.clock_out ?? null,
+      original_total_hours: oldRecord?.total_hours ?? null,
+      original_status: oldRecord?.status ?? null,
+      new_clock_in: newClockIn,
+      new_clock_out: newClockOut,
+      new_total_hours: upserted?.total_hours ?? null,
+      new_status: newStatus,
+      approved_by: reviewerId,
+    });
+  }
 }

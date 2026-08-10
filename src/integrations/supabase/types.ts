@@ -44,6 +44,143 @@ export type Database = {
         }
         Relationships: []
       }
+      attendance_requests: {
+        Row: {
+          id: string
+          agent_id: string
+          request_type: string
+          attendance_date: string | null
+          from_date: string | null
+          to_date: string | null
+          reason: string
+          details: string | null
+          attachment_url: string | null
+          requested_clock_in: string | null
+          requested_clock_out: string | null
+          requested_status: string | null
+          status: string
+          admin_note: string | null
+          rejection_reason: string | null
+          reviewed_by: string | null
+          reviewed_at: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          agent_id: string
+          request_type: string
+          attendance_date?: string | null
+          from_date?: string | null
+          to_date?: string | null
+          reason: string
+          details?: string | null
+          attachment_url?: string | null
+          requested_clock_in?: string | null
+          requested_clock_out?: string | null
+          requested_status?: string | null
+          status?: string
+          admin_note?: string | null
+          rejection_reason?: string | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          agent_id?: string
+          request_type?: string
+          attendance_date?: string | null
+          from_date?: string | null
+          to_date?: string | null
+          reason?: string
+          details?: string | null
+          attachment_url?: string | null
+          requested_clock_in?: string | null
+          requested_clock_out?: string | null
+          requested_status?: string | null
+          status?: string
+          admin_note?: string | null
+          rejection_reason?: string | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_requests_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      attendance_adjustment_audit: {
+        Row: {
+          id: string
+          request_id: string
+          attendance_id: string | null
+          agent_id: string
+          original_clock_in: string | null
+          original_clock_out: string | null
+          original_total_hours: number | null
+          original_status: string | null
+          new_clock_in: string | null
+          new_clock_out: string | null
+          new_total_hours: number | null
+          new_status: string | null
+          approved_by: string | null
+          approved_at: string
+        }
+        Insert: {
+          id?: string
+          request_id: string
+          attendance_id?: string | null
+          agent_id: string
+          original_clock_in?: string | null
+          original_clock_out?: string | null
+          original_total_hours?: number | null
+          original_status?: string | null
+          new_clock_in?: string | null
+          new_clock_out?: string | null
+          new_total_hours?: number | null
+          new_status?: string | null
+          approved_by?: string | null
+          approved_at?: string
+        }
+        Update: {
+          [k: string]: unknown
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_adjustment_audit_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "attendance_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_adjustment_audit_agent_id_fkey"
+            columns: ["agent_id"]
+            isOneToOne: false
+            referencedRelation: "agents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       offices: {
         Row: {
           id: string

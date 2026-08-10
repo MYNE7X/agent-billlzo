@@ -11,6 +11,47 @@ export const SHIFT_TIMINGS = [
 ] as const;
 export const AGENT_STATUSES = ["active", "inactive", "suspended", "resigned"] as const;
 export const ATTENDANCE_STATUSES = ["present", "absent", "late", "half_day", "leave", "holiday", "weekly_off"] as const;
+
+// ── Attendance Request Types ──────────────────────────────────────────────────
+export const ATTENDANCE_REQUEST_TYPES = [
+  { value: "leave", label: "Leave" },
+  { value: "sick_leave", label: "Sick Leave" },
+  { value: "fever_illness", label: "Fever / Illness" },
+  { value: "emergency_leave", label: "Emergency Leave" },
+  { value: "late_arrival", label: "Late Arrival" },
+  { value: "early_departure", label: "Early Departure" },
+  { value: "missing_check_in", label: "Missing Check-In" },
+  { value: "missing_check_out", label: "Missing Check-Out" },
+  { value: "attendance_adjustment", label: "Attendance Adjustment" },
+  { value: "wrong_attendance", label: "Wrong Attendance" },
+  { value: "day_off", label: "Day Off" },
+  { value: "other", label: "Other" },
+] as const;
+
+export const ATTENDANCE_REQUEST_STATUSES = ["pending", "approved", "rejected", "cancelled"] as const;
+
+/** Human-readable label for a request type value. */
+export const requestTypeLabel = (v: string): string =>
+  ATTENDANCE_REQUEST_TYPES.find((t) => t.value === v)?.label ?? labelize(v);
+
+/** Request types that involve adjustment to the attendance record. */
+export const ADJUSTMENT_REQUEST_TYPES = new Set([
+  "missing_check_in",
+  "missing_check_out",
+  "attendance_adjustment",
+  "wrong_attendance",
+  "late_arrival",
+  "early_departure",
+]);
+
+/** Request types that are leave-like (update attendance status on approval). */
+export const LEAVE_REQUEST_TYPES = new Set([
+  "leave",
+  "sick_leave",
+  "fever_illness",
+  "emergency_leave",
+  "day_off",
+]);
 export const PROVINCES = [
   "Punjab",
   "Sindh",
