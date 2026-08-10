@@ -94,19 +94,24 @@ export function EditorBubble({
       {/* Trigger — eye icon */}
       <button
         onClick={() => isMobile && setOpen((p) => !p)}
-        className="grid size-6 place-items-center rounded-full text-muted-foreground/40 transition-colors hover:bg-primary/15 hover:text-primary"
+        className="grid size-5 shrink-0 place-items-center rounded-full text-muted-foreground/40 transition-colors hover:bg-primary/15 hover:text-primary"
         aria-label={`${label} — view details`}
         aria-expanded={open}
       >
-        <Eye className="size-3.5" />
+        <Eye className="size-3" />
       </button>
 
-      {/* Popup */}
+      {/* Popup — positioned to avoid table overflow */}
       {open && (
         <div
           className={cn(
-            "aurora-border glass animate-rise absolute right-0 top-full z-50 mt-1 w-64 max-w-[calc(100vw-2rem)] rounded-xl p-4",
+            "aurora-border glass animate-rise fixed z-[60] mt-1 w-64 max-w-[calc(100vw-2rem)] rounded-xl p-4",
           )}
+          style={{
+            right: "max(1rem, calc(100vw - 18rem))",
+            top: "auto",
+            bottom: "auto",
+          }}
           role="tooltip"
         >
           {/* Close button (mobile) */}

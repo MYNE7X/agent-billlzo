@@ -184,7 +184,7 @@ function AttendanceCard({
           ) : (
             <span />
           )}
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1.5">
             {/* Editor bubble — shows who last adjusted */}
             {row.created_by && (
               <EditorBubble
@@ -869,8 +869,8 @@ function AttendanceTableRow({
         </td>
       )}
       {isStaff && (
-        <td className="px-4 py-3.5 text-right">
-          <div className="flex items-center justify-end gap-1">
+        <td className="px-3 py-3.5 text-right">
+          <div className="flex items-center justify-end gap-1.5">
             {/* Editor bubble — shows who created/adjusted this record */}
             <EditorBubble
               editedBy={row.created_by ?? null}
@@ -888,7 +888,7 @@ function AttendanceTableRow({
                   variant="ghost"
                   className="h-7 gap-1.5 rounded-lg px-2.5 text-xs text-muted-foreground hover:bg-primary/10 hover:text-primary"
                 >
-                  <CalendarClock className="size-3.5" /> Edit
+                  <CalendarClock className="size-3" /> Edit
                 </Button>
               }
             />
@@ -896,10 +896,10 @@ function AttendanceTableRow({
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-7 gap-1.5 rounded-lg px-2.5 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                className="h-7 gap-1 rounded-lg px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
                 onClick={() => onDelete(row.id)}
               >
-                <Trash2 className="size-3.5" /> Delete
+                <Trash2 className="size-3" /> Delete
               </Button>
             )}
           </div>
