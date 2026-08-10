@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { Building2, Fingerprint, Clock, FileStack, Loader2 } from "lucide-react";
+import { Building2, Fingerprint, Clock, FileStack, Loader2, ShieldCheck, Zap, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -56,63 +56,121 @@ function AuthPage() {
   };
 
   return (
-    <div className="surface-grid grid min-h-screen lg:grid-cols-2">
+    <div className="surface-grid relative grid min-h-screen lg:grid-cols-2">
+      {/* ── Animated aurora background blobs ──────────────────────────────── */}
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <div
+          className="absolute -left-32 -top-32 h-[44rem] w-[44rem] animate-aurora rounded-full opacity-55 blur-[110px]"
+          style={{ background: "radial-gradient(circle, oklch(0.78 0.16 184 / 0.65), transparent 70%)" }}
+        />
+        <div
+          className="absolute -right-32 top-1/4 h-[42rem] w-[42rem] animate-aurora rounded-full opacity-50 blur-[110px]"
+          style={{
+            background: "radial-gradient(circle, oklch(0.7 0.22 350 / 0.65), transparent 70%)",
+            animationDelay: "-6s",
+          }}
+        />
+        <div
+          className="absolute bottom-0 left-1/3 h-[36rem] w-[36rem] animate-aurora rounded-full opacity-45 blur-[110px]"
+          style={{
+            background: "radial-gradient(circle, oklch(0.66 0.2 295 / 0.55), transparent 70%)",
+            animationDelay: "-12s",
+          }}
+        />
+        <div
+          className="absolute right-1/4 top-1/2 h-[28rem] w-[28rem] animate-aurora rounded-full opacity-35 blur-[100px]"
+          style={{
+            background: "radial-gradient(circle, oklch(0.74 0.16 156 / 0.45), transparent 70%)",
+            animationDelay: "-3s",
+          }}
+        />
+      </div>
+
+      {/* ── Left brand panel ──────────────────────────────────────────────── */}
       <section className="relative hidden flex-col justify-between p-12 lg:flex">
         <div className="flex items-center gap-3">
-          <span className="grid size-11 place-items-center rounded-xl bg-primary/15 ring-1 ring-primary/30">
-            <Building2 className="size-6 text-primary" />
+          <span className="relative grid size-12 place-items-center overflow-hidden rounded-2xl">
+            <span className="absolute inset-0 bg-gradient-to-br from-primary via-cyan-400 to-fuchsia-500" />
+            <span className="absolute -inset-3 animate-aurora bg-gradient-to-br from-primary/40 via-fuchsia-500/40 to-violet-500/40 blur-lg" />
+            <Building2 className="relative size-6 text-background" strokeWidth={2.4} />
+            <span className="absolute inset-0 ring-1 ring-inset ring-white/25" />
           </span>
           <div>
-            <p className="font-display text-xl font-semibold text-gradient">Billzo</p>
-            <p className="text-[11px] uppercase tracking-widest text-muted-foreground">Office Management</p>
+            <p className="brand-mark font-display text-2xl font-bold">Billzo</p>
+            <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Office Management</p>
           </div>
         </div>
 
-        <div className="max-w-md">
-          <h1 className="font-display text-4xl font-semibold leading-tight">
-            Agent management &amp; attendance, <span className="text-gradient">done properly</span>.
+        <div className="relative max-w-md">
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary">
+            <span className="relative flex size-1.5">
+              <span className="absolute inline-flex h-full w-full animate-status-ping rounded-full bg-primary opacity-75" />
+              <span className="relative inline-flex size-1.5 rounded-full bg-primary" />
+            </span>
+            Aurora Edition
+          </div>
+
+          <h1 className="font-display text-5xl font-bold leading-[1.05] tracking-tight">
+            Agent management, <br />
+            <span className="text-gradient-aurora">done properly.</span>
           </h1>
-          <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-            Complete agent profiles, secure document vault, and real-time attendance tracking — built to scale
-            with every future Billzo module.
+          <p className="mt-5 text-base leading-relaxed text-muted-foreground">
+            Complete agent profiles, secure document vault, and real-time attendance tracking —
+            built to scale with every future Billzo module.
           </p>
           <ul className="mt-8 space-y-3">
             {[
               { icon: Fingerprint, text: "Role-based access for Super Admin, Admin & Agent" },
-              { icon: FileStack, text: "Encrypted document storage with instant preview" },
-              { icon: Clock, text: "Clock in / out with automatic working-hour totals" },
+              { icon: FileStack,    text: "Encrypted document storage with instant preview" },
+              { icon: Clock,        text: "Clock in / out with automatic working-hour totals" },
+              { icon: ShieldCheck,  text: "Office-network lock for attendance integrity" },
             ].map((f, i) => (
               <li
                 key={f.text}
-                className="glass animate-rise flex items-center gap-3 rounded-xl px-4 py-3 text-sm"
+                className="aurora-border glass animate-rise flex items-center gap-3 rounded-xl px-4 py-3 text-sm"
                 style={{ animationDelay: `${i * 90}ms` }}
               >
-                <f.icon className="size-4 shrink-0 text-primary" />
-                {f.text}
+                <span className="aurora-border-ring" />
+                <span className="relative grid size-7 shrink-0 place-items-center rounded-lg bg-primary/15 text-primary">
+                  <f.icon className="size-3.5" strokeWidth={2.2} />
+                </span>
+                <span className="relative">{f.text}</span>
               </li>
             ))}
           </ul>
         </div>
 
-        <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} Billzo. All rights reserved.</p>
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} Billzo. All rights reserved.</p>
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/60">
+            <Zap className="size-3 fill-primary text-primary" />
+            Crafted by Aziz · Myne7x
+          </div>
+        </div>
       </section>
 
-      <section className="flex items-center justify-center p-6">
-        <div className="glass animate-rise w-full max-w-md rounded-2xl p-7">
+      {/* ── Right auth panel ──────────────────────────────────────────────── */}
+      <section className="relative flex items-center justify-center p-6">
+        <div className="aurora-border glass animate-rise relative w-full max-w-md rounded-3xl p-8">
+          <span className="aurora-border-ring" />
+          {/* Mobile brand */}
           <div className="mb-6 flex items-center gap-3 lg:hidden">
-            <span className="grid size-10 place-items-center rounded-xl bg-primary/15 ring-1 ring-primary/30">
-              <Building2 className="size-5 text-primary" />
+            <span className="relative grid size-11 place-items-center overflow-hidden rounded-2xl">
+              <span className="absolute inset-0 bg-gradient-to-br from-primary via-cyan-400 to-fuchsia-500" />
+              <Building2 className="relative size-5 text-background" strokeWidth={2.4} />
             </span>
-            <p className="font-display text-lg font-semibold text-gradient">Billzo</p>
+            <div>
+              <p className="brand-mark font-display text-xl font-bold">Billzo</p>
+              <p className="text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground">Office Management</p>
+            </div>
           </div>
 
-          <h2 className="font-display text-2xl font-semibold">Sign in to your workspace</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <h2 className="font-display relative text-3xl font-bold tracking-tight">Sign in to your workspace</h2>
+          <p className="relative mt-1.5 text-sm text-muted-foreground">
             The first account created becomes the Super Admin.
           </p>
 
-
-          <Tabs defaultValue="signin" className="mt-6">
+          <Tabs defaultValue="signin" className="relative mt-6">
             <TabsList className="grid w-full grid-cols-2 bg-secondary/60">
               <TabsTrigger value="signin">Sign In</TabsTrigger>
               <TabsTrigger value="signup">Create Account</TabsTrigger>
@@ -144,8 +202,16 @@ function AuthPage() {
                     placeholder="••••••••"
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={busy}>
-                  {busy ? <Loader2 className="size-4 animate-spin" /> : null} Sign In
+                <Button
+                  type="submit"
+                  className="btn-shine group relative w-full bg-gradient-to-r from-primary via-cyan-400 to-primary bg-[length:200%_auto] text-primary-foreground transition-[background-position] duration-500 hover:bg-[position:right_center]"
+                  disabled={busy}
+                >
+                  <span className="relative flex items-center justify-center gap-2">
+                    {busy ? <Loader2 className="size-4 animate-spin" /> : null}
+                    Sign In
+                    {!busy ? <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" /> : null}
+                  </span>
                 </Button>
               </form>
             </TabsContent>
@@ -189,8 +255,16 @@ function AuthPage() {
                     placeholder="At least 6 characters"
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={busy}>
-                  {busy ? <Loader2 className="size-4 animate-spin" /> : null} Create Account
+                <Button
+                  type="submit"
+                  className="btn-shine group relative w-full bg-gradient-to-r from-primary via-cyan-400 to-primary bg-[length:200%_auto] text-primary-foreground transition-[background-position] duration-500 hover:bg-[position:right_center]"
+                  disabled={busy}
+                >
+                  <span className="relative flex items-center justify-center gap-2">
+                    {busy ? <Loader2 className="size-4 animate-spin" /> : null}
+                    Create Account
+                    {!busy ? <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" /> : null}
+                  </span>
                 </Button>
               </form>
             </TabsContent>

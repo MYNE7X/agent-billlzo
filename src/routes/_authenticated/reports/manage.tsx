@@ -237,21 +237,33 @@ function ManageReportsPage() {
   return (
     <div className="space-y-6">
       {/* header */}
-      <div className="relative overflow-hidden rounded-3xl border border-white/8 bg-gradient-to-br from-[#0d1420] via-[#0f1827] to-[#090e18] p-6 sm:p-8 shadow-2xl shadow-black/40 animate-rise">
+      <div className="aurora-border glass-strong animate-rise relative overflow-hidden rounded-3xl p-6 sm:p-8">
+        <span className="aurora-border-ring" />
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -right-20 -top-20 size-72 rounded-full bg-primary/8 blur-3xl" />
-          <div className="absolute -bottom-10 left-1/3 size-56 rounded-full bg-indigo-500/6 blur-3xl" />
+          <div
+            className="absolute -right-20 -top-24 size-80 animate-aurora rounded-full opacity-50 blur-[100px]"
+            style={{ background: "radial-gradient(circle, oklch(0.78 0.16 184 / 0.45), transparent 70%)" }}
+          />
+          <div
+            className="absolute -bottom-16 left-1/4 size-64 animate-aurora rounded-full opacity-35 blur-[100px]"
+            style={{
+              background: "radial-gradient(circle, oklch(0.7 0.22 350 / 0.4), transparent 70%)",
+              animationDelay: "-7s",
+            }}
+          />
         </div>
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
+        <div className="absolute inset-x-0 top-1 h-[1px] bg-gradient-to-r from-transparent via-fuchsia-500/30 to-transparent" />
 
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="grid size-12 place-items-center rounded-2xl bg-primary/15 ring-1 ring-primary/30">
-              <BarChart3 className="size-6 text-primary" />
+            <div className="aurora-border relative grid size-12 place-items-center rounded-2xl bg-primary/15 ring-1 ring-primary/30">
+              <span className="aurora-border-ring" />
+              <BarChart3 className="relative size-6 text-primary" strokeWidth={2.2} />
             </div>
             <div>
-              <h1 className="font-display text-2xl font-bold tracking-tight text-gradient sm:text-3xl">
-                Manage Reports
+              <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
+                <span className="text-gradient-aurora">Manage Reports</span>
               </h1>
               <p className="mt-0.5 text-sm text-muted-foreground/70">
                 Create and edit monthly performance reports for agents.

@@ -13,10 +13,11 @@ import {
   Receipt,
   Wifi,
   BarChart3,
-  X,
   ChevronRight,
   Home,
   Settings2,
+  Search,
+  Command,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -68,51 +69,70 @@ function SidebarNav({
 }) {
   return (
     <div className="flex h-full flex-col gap-3 p-4">
-      {/* Brand */}
+      {/* Brand — animated aurora mark */}
       <Link
         to="/dashboard"
         onClick={onNavigate}
-        className="group flex items-center gap-3 rounded-2xl px-2 py-2 transition-colors hover:bg-secondary/40"
+        className="group relative flex items-center gap-3 overflow-hidden rounded-2xl px-2 py-2 transition-colors hover:bg-secondary/40"
       >
-        <span className="relative grid size-10 place-items-center overflow-hidden rounded-xl bg-gradient-to-br from-primary/90 to-emerald-500/80 shadow-lg shadow-primary/20">
-          <Building2 className="size-5 text-background" />
-          <span className="absolute inset-0 ring-1 ring-inset ring-white/20" />
+        <span className="relative grid size-11 place-items-center overflow-hidden rounded-xl">
+          {/* gradient base */}
+          <span className="absolute inset-0 bg-gradient-to-br from-primary via-cyan-400 to-fuchsia-500 opacity-95" />
+          {/* shimmer overlay */}
+          <span className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/30 to-transparent opacity-0 transition-opacity duration-500 group-hover:opacity-100" />
+          {/* animated aurora glow */}
+          <span className="absolute -inset-2 animate-aurora bg-gradient-to-br from-primary/40 via-fuchsia-500/40 to-violet-500/40 blur-lg" />
+          <Building2 className="relative size-5 text-background drop-shadow" strokeWidth={2.4} />
+          <span className="absolute inset-0 ring-1 ring-inset ring-white/25" />
         </span>
-        <span>
-          <span className="font-display block text-lg font-bold leading-tight text-gradient">
+        <span className="min-w-0">
+          <span className="brand-mark font-display block text-xl font-bold leading-tight">
             Billzo
           </span>
-          <span className="block text-[10px] uppercase tracking-[0.18em] text-muted-foreground/70">
+          <span className="block text-[10px] font-medium uppercase tracking-[0.22em] text-muted-foreground/70">
             Office System
           </span>
         </span>
       </Link>
 
-      {/* Primary nav — banking-style grouped list */}
+      {/* Search hint (desktop only, decorative) */}
+      <button
+        className="hidden items-center gap-2 rounded-xl border border-border/60 bg-secondary/30 px-3 py-2 text-xs text-muted-foreground/70 transition-colors hover:border-primary/30 hover:bg-secondary/50 lg:flex"
+        type="button"
+      >
+        <Search className="size-3.5" />
+        <span className="flex-1 text-left">Quick search…</span>
+        <kbd className="flex items-center gap-0.5 rounded-md border border-border/70 bg-background/60 px-1.5 py-0.5 font-mono text-[9px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+          <Command className="size-2.5" />K
+        </kbd>
+      </button>
+
+      {/* Primary nav */}
       <nav className="no-scrollbar no-scrollbar-webkit -mx-1 flex-1 overflow-y-auto px-1 py-2">
-        <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/50">
+        <p className="mb-2 px-3 text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/45">
           Menu
         </p>
-        <div className="space-y-0.5">
-          {items.map((item, idx) => (
+        <div className="space-y-1">
+          {items.map((item) => (
             <Link
               key={item.to}
               to={item.to}
               onClick={onNavigate}
               activeProps={{ className: "is-active" }}
               className={cn(
-                "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
-                "text-muted-foreground hover:bg-secondary/50 hover:text-foreground",
-                idx === 0 && "mt-0",
+                "group relative flex items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
+                "text-muted-foreground hover:bg-secondary/40 hover:text-foreground",
               )}
             >
+              {/* active gradient wash background */}
+              <span className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-primary/15 via-primary/5 to-transparent transition-transform duration-300 [.is-active_&]:translate-x-0" />
               {/* active indicator bar (left) */}
-              <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-primary opacity-0 transition-opacity duration-200 [.is-active_&]:opacity-100" />
-              <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-secondary/40 text-muted-foreground transition-all duration-200 group-hover:bg-primary/15 group-hover:text-primary [.is-active_&]:bg-primary/15 [.is-active_&]:text-primary">
-                <item.icon className="size-4" />
+              <span className="absolute left-0 top-1/2 h-6 w-[3px] -translate-y-1/2 rounded-r-full bg-gradient-to-b from-primary to-fuchsia-500 opacity-0 transition-opacity duration-200 [.is-active_&]:opacity-100" />
+              <span className="relative grid size-8 shrink-0 place-items-center rounded-lg bg-secondary/40 text-muted-foreground transition-all duration-200 group-hover:bg-primary/15 group-hover:text-primary [.is-active_&]:bg-primary/20 [.is-active_&]:text-primary [.is-active_&]:shadow-pop-primary">
+                <item.icon className="size-4" strokeWidth={2.2} />
               </span>
-              <span className="flex-1 [.is-active_&]:text-foreground">{item.label}</span>
-              <ChevronRight className="size-3.5 text-muted-foreground/30 [.is-active_&]:text-primary/60" />
+              <span className="relative flex-1 [.is-active_&]:text-foreground [.is-active_&]:font-semibold">{item.label}</span>
+              <ChevronRight className="relative size-3.5 text-muted-foreground/30 transition-all duration-200 [.is-active_&]:translate-x-0.5 [.is-active_&]:text-primary/70" />
             </Link>
           ))}
         </div>
@@ -122,16 +142,17 @@ function SidebarNav({
       <CreatorBadge />
 
       {/* Account card */}
-      <div className="rounded-2xl border border-border/50 bg-secondary/30 p-3">
-        <div className="flex items-center gap-3">
-          <Avatar className="size-9 ring-2 ring-primary/20 ring-offset-1 ring-offset-background">
-            <AvatarFallback className="bg-primary/20 text-xs font-bold text-primary">
+      <div className="aurora-border relative overflow-hidden rounded-2xl border border-border/50 bg-secondary/30 p-3">
+        <span className="aurora-border-ring" />
+        <div className="relative flex items-center gap-3">
+          <Avatar className="size-9 ring-2 ring-primary/30 ring-offset-1 ring-offset-background">
+            <AvatarFallback className="bg-gradient-to-br from-primary/30 to-fuchsia-500/20 text-xs font-bold text-primary">
               {initials(profile?.full_name ?? profile?.email)}
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-semibold">{profile?.full_name ?? "User"}</p>
-            <p className="truncate text-[10px] uppercase tracking-wider text-muted-foreground/70">
+            <p className="truncate text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
               {labelize(primaryRole)}
             </p>
           </div>
@@ -139,7 +160,7 @@ function SidebarNav({
         <Button
           variant="ghost"
           size="sm"
-          className="mt-2 w-full justify-start text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+          className="relative mt-2 w-full justify-start text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
           onClick={onSignOut}
         >
           <LogOut className="size-3.5" /> Sign out
@@ -149,58 +170,55 @@ function SidebarNav({
   );
 }
 
-/** Compact creator signature */
+/** Compact creator signature — refined aurora card */
 function CreatorBadge() {
   return (
-    <div
-      className="relative overflow-hidden rounded-xl px-3 py-2.5"
-      style={{
-        background:
-          "linear-gradient(135deg, hsl(var(--primary)/0.08) 0%, hsl(var(--primary)/0.04) 100%)",
-        boxShadow: "inset 0 0 0 1px hsl(var(--primary)/0.15)",
-      }}
-    >
-      <div
-        className="absolute inset-x-0 top-0 h-px"
-        style={{
-          background:
-            "linear-gradient(90deg, transparent 0%, hsl(var(--primary)/0.6) 35%, hsl(160 70% 55%/0.6) 65%, transparent 100%)",
-        }}
-      />
-      <div className="relative flex items-center gap-2.5">
-        <div className="relative shrink-0">
-          <div
-            className="absolute inset-0 rounded-lg blur-md opacity-60"
-            style={{ background: "linear-gradient(135deg, hsl(var(--primary)), hsl(160 70% 50%))" }}
-          />
-          <div
-            className="relative grid size-8 place-items-center rounded-lg"
-            style={{
-              background: "linear-gradient(135deg, hsl(var(--primary)/0.9), hsl(160 70% 45%/0.9))",
-            }}
-          >
-            <Zap className="size-3.5 text-background fill-background" />
-          </div>
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[9px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/60">
-            Crafted by
-          </p>
-          <div className="flex items-baseline gap-1.5">
-            <span
-              className="text-sm font-bold leading-tight"
+    <div className="aurora-border relative overflow-hidden rounded-xl">
+      <span className="aurora-border-ring" />
+      <div className="relative px-3 py-2.5">
+        {/* top gradient line */}
+        <div
+          className="absolute inset-x-0 top-0 h-px"
+          style={{
+            background:
+              "linear-gradient(90deg, transparent 0%, oklch(0.78 0.16 184 / 0.7) 35%, oklch(0.7 0.22 350 / 0.7) 65%, transparent 100%)",
+          }}
+        />
+        <div className="flex items-center gap-2.5">
+          <div className="relative shrink-0">
+            <div
+              className="absolute inset-0 animate-glow rounded-lg opacity-70 blur-md"
+              style={{ background: "linear-gradient(135deg, oklch(0.78 0.16 184), oklch(0.7 0.22 350))" }}
+            />
+            <div
+              className="relative grid size-8 place-items-center rounded-lg"
               style={{
-                background: "linear-gradient(90deg, hsl(var(--primary)) 0%, hsl(160 70% 60%) 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
+                background: "linear-gradient(135deg, oklch(0.78 0.16 184 / 0.95), oklch(0.7 0.22 350 / 0.95))",
               }}
             >
-              Aziz
-            </span>
-            <span className="font-mono text-[10px] font-semibold text-muted-foreground/50">
-              · Myne7x
-            </span>
+              <Zap className="size-3.5 fill-background text-background" strokeWidth={2.5} />
+            </div>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[9px] font-semibold uppercase tracking-[0.22em] text-muted-foreground/60">
+              Crafted by
+            </p>
+            <div className="flex items-baseline gap-1.5">
+              <span
+                className="text-sm font-bold leading-tight"
+                style={{
+                  background: "linear-gradient(90deg, oklch(0.82 0.16 184) 0%, oklch(0.7 0.22 350) 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                }}
+              >
+                Aziz
+              </span>
+              <span className="font-mono text-[10px] font-semibold text-muted-foreground/50">
+                · Myne7x
+              </span>
+            </div>
           </div>
         </div>
       </div>
@@ -222,9 +240,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       ? "admin"
       : "agent";
 
-  // Bottom tab bar — banking app style:
-  // 4 fixed slots: Home, second-action, Reports, Me  (and a "more" if extra items exist)
-  // Order matters: Home is always first, Me is always last.
   const profileItem = items.find((i) => i.to === "/my-profile")!;
   const dashboardItem = items.find((i) => i.to === "/dashboard")!;
   const reportsItem = items.find((i) => i.to === "/reports");
@@ -232,11 +247,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     (i) => i.to !== "/my-profile" && i.to !== "/dashboard" && i.to !== "/reports",
   );
 
-  // Build a fixed 4-or-5 slot bottom bar.
-  // Slot 1: Home
-  // Slot 2: Reports (if available) OR first middle item
-  // Slot 3: A middle item OR More (if extra items)
-  // Slot 4 (last): Me (Profile)
   const bottomSlots: (NavItem | { isMore: true })[] = [];
   bottomSlots.push(dashboardItem);
   if (reportsItem) {
@@ -244,7 +254,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   } else if (middleItems[0]) {
     bottomSlots.push(middleItems[0]);
   }
-  // Always include a "more" slot if there are leftover items
   const usedTos = new Set(bottomSlots.map((s) => ("to" in s ? s.to : "")));
   const leftover = items.filter((i) => !usedTos.has(i.to) && i.to !== "/my-profile");
   if (leftover.length > 0) {
@@ -255,8 +264,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     bottomSlots.push(middleItems[0]);
   }
   bottomSlots.push(profileItem);
-
-  // Ensure we never exceed 5 slots
   const finalSlots = bottomSlots.slice(0, 5);
 
   const handleSignOut = async () => {
@@ -268,7 +275,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-screen flex-col bg-background">
       {/* ── desktop sidebar (≥ lg) ───────────────────────────────────────── */}
-      <aside className="glass fixed inset-y-0 left-0 z-40 hidden w-[260px] border-r border-border/40 lg:block">
+      <aside className="glass fixed inset-y-0 left-0 z-40 hidden w-[280px] border-r border-border/40 lg:block">
+        {/* Subtle vertical aurora wash on the sidebar */}
+        <div
+          className="pointer-events-none absolute inset-y-0 right-0 w-px opacity-50"
+          style={{
+            background:
+              "linear-gradient(to bottom, transparent 0%, oklch(0.78 0.16 184 / 0.5) 20%, oklch(0.7 0.22 350 / 0.5) 70%, transparent 100%)",
+          }}
+        />
         <SidebarNav
           items={items}
           primaryRole={primaryRole}
@@ -283,7 +298,6 @@ export function AppShell({ children }: { children: ReactNode }) {
         style={{ paddingBottom: "8px" }}
       >
         <div className="flex h-14 items-center gap-2 px-4">
-          {/* Hamburger / brand */}
           <button
             onClick={() => setSheetOpen(true)}
             className="grid size-9 place-items-center rounded-xl bg-secondary/40 text-muted-foreground transition-colors hover:bg-secondary/70 hover:text-foreground active:scale-95"
@@ -293,26 +307,25 @@ export function AppShell({ children }: { children: ReactNode }) {
           </button>
 
           <Link to="/dashboard" className="flex items-center gap-2">
-            <span className="grid size-7 place-items-center rounded-lg bg-gradient-to-br from-primary/90 to-emerald-500/80 shadow-sm shadow-primary/20">
-              <Building2 className="size-3.5 text-background" />
+            <span className="relative grid size-7 place-items-center overflow-hidden rounded-lg">
+              <span className="absolute inset-0 bg-gradient-to-br from-primary via-cyan-400 to-fuchsia-500 opacity-95" />
+              <Building2 className="relative size-3.5 text-background" strokeWidth={2.5} />
             </span>
-            <span className="font-display text-sm font-bold text-gradient">Billzo</span>
+            <span className="brand-mark font-display text-base font-bold">Billzo</span>
           </Link>
 
           <div className="flex-1" />
 
-          {/* Role pill */}
-          <span className="rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
+          <span className="rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
             {labelize(primaryRole)}
           </span>
 
-          {/* Avatar shortcut */}
           <Link
             to="/my-profile"
-            className="grid size-9 place-items-center overflow-hidden rounded-full ring-2 ring-primary/20 ring-offset-1 ring-offset-background active:scale-95"
+            className="grid size-9 place-items-center overflow-hidden rounded-full ring-2 ring-primary/30 ring-offset-1 ring-offset-background active:scale-95"
           >
             <Avatar className="size-full">
-              <AvatarFallback className="bg-primary/20 text-[10px] font-bold text-primary">
+              <AvatarFallback className="bg-gradient-to-br from-primary/30 to-fuchsia-500/20 text-[10px] font-bold text-primary">
                 {initials(profile?.full_name ?? profile?.email)}
               </AvatarFallback>
             </Avatar>
@@ -339,34 +352,41 @@ export function AppShell({ children }: { children: ReactNode }) {
       </Sheet>
 
       {/* ── desktop top bar (sticky, inside main column) ────────────────── */}
-      <div className="lg:pl-[260px]">
-        <header className="glass sticky top-0 z-30 hidden items-center gap-3 border-b border-border/40 px-8 py-3 lg:flex">
+      <div className="lg:pl-[280px]">
+        <header className="glass sticky top-0 z-30 hidden items-center gap-3 border-b border-border/40 px-8 py-3.5 lg:flex">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Home className="size-3.5" />
-            <span>Billzo</span>
+            <span className="font-medium">Billzo</span>
             <ChevronRight className="size-3 text-muted-foreground/40" />
-            <span className="font-medium text-foreground">{labelize(primaryRole)} workspace</span>
+            <span className="font-semibold text-foreground">{labelize(primaryRole)} workspace</span>
           </div>
           <div className="flex-1" />
-          <span className="rounded-full border border-primary/25 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+          {/* Live status pill */}
+          <div className="flex items-center gap-2 rounded-full border border-success/30 bg-success/10 px-3 py-1.5">
+            <span className="relative flex size-2">
+              <span className="absolute inline-flex h-full w-full animate-status-ping rounded-full bg-success opacity-75" />
+              <span className="relative inline-flex size-2 rounded-full bg-success" />
+            </span>
+            <span className="text-xs font-semibold text-success">Live</span>
+          </div>
+          <span className="rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
             {labelize(primaryRole)}
           </span>
         </header>
 
-        {/* ── main content area ────────────────────────────────────────────
-         * Mobile: pt-14 (header height) + pb-24 (bottom tab bar height)
-         * Desktop: pt-0 (sticky header is in-flow) + pb-8
-         */}
         <main
-          className="surface-grid min-h-screen px-4 pt-14 pb-28 sm:px-5 lg:px-8 lg:pt-6 lg:pb-10"
+          className="surface-grid relative min-h-screen px-4 pt-14 pb-28 sm:px-5 lg:px-8 lg:pt-6 lg:pb-10"
         >
+          {/* Aurora ambient blobs — fixed within main column */}
+          <div
+            className="pointer-events-none absolute -top-32 right-0 -z-10 h-96 w-96 rounded-full opacity-30 blur-3xl"
+            style={{ background: "radial-gradient(circle, oklch(0.7 0.22 350 / 0.5), transparent 70%)" }}
+          />
           <div className="mx-auto w-full max-w-6xl">{children}</div>
         </main>
       </div>
 
-      {/* ── mobile bottom tab bar (banking-app style) ──────────────────────
-       * Fixed floating bar, 4-5 evenly-spaced slots, raised icon for active.
-       */}
+      {/* ── mobile bottom tab bar ────────────────────────────────────────── */}
       <nav
         className="glass safe-bottom shadow-bar fixed inset-x-0 bottom-0 z-40 border-t border-border/40 lg:hidden"
         style={{ paddingTop: "6px" }}
@@ -396,10 +416,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                 activeProps={{ className: "is-active" }}
                 className="group relative flex flex-1 flex-col items-center justify-center gap-0.5 py-1.5 text-muted-foreground transition-colors active:scale-95"
               >
-                {/* active top pill */}
-                <span className="absolute -top-[6px] h-0.5 w-8 rounded-full bg-primary opacity-0 transition-opacity duration-200 [.is-active_&]:opacity-100" />
-                <span className="grid size-9 place-items-center rounded-xl bg-transparent transition-all duration-200 group-hover:bg-secondary/40 [.is-active_&]:bg-primary/15 [.is-active_&]:text-primary">
-                  <item.icon className="size-4.5 transition-transform duration-200 group-active:scale-90 [.is-active_&]:scale-110" />
+                {/* active top pill — gradient */}
+                <span className="absolute -top-[6px] h-0.5 w-8 rounded-full bg-gradient-to-r from-primary to-fuchsia-500 opacity-0 transition-opacity duration-200 [.is-active_&]:opacity-100" />
+                <span className="grid size-9 place-items-center rounded-xl bg-transparent transition-all duration-200 group-hover:bg-secondary/40 [.is-active_&]:bg-primary/15 [.is-active_&]:text-primary [.is-active_&]:shadow-pop-primary">
+                  <item.icon className="size-4.5 transition-transform duration-200 group-active:scale-90 [.is-active_&]:scale-110" strokeWidth={2.2} />
                 </span>
                 <span className="text-[9px] font-semibold leading-none tracking-wide [.is-active_&]:text-primary">
                   {item.shortLabel ?? item.label}

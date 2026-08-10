@@ -246,7 +246,10 @@ function AgentDashboard() {
   if (isLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        <div className="relative size-10">
+          <div className="absolute inset-0 animate-spin rounded-full border-2 border-primary/30 border-t-primary" style={{ animationDuration: "0.9s" }} />
+          <div className="absolute inset-1.5 animate-spin rounded-full border-2 border-fuchsia-500/20 border-b-fuchsia-500" style={{ animationDuration: "1.4s", animationDirection: "reverse" }} />
+        </div>
       </div>
     );
   }
@@ -254,23 +257,40 @@ function AgentDashboard() {
   return (
     <div className="space-y-6">
       {/* ── GREETING HERO ── */}
-      <div className="relative overflow-hidden rounded-3xl border border-white/8 bg-gradient-to-br from-[#0d1420] via-[#0f1827] to-[#090e18] p-6 sm:p-8 shadow-2xl shadow-black/40 animate-rise">
-        {/* background glow */}
+      <div className="aurora-border glass-strong animate-rise relative overflow-hidden rounded-3xl p-6 sm:p-8">
+        <span className="aurora-border-ring" />
+        {/* background aurora blobs */}
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -right-20 -top-20 size-72 rounded-full bg-primary/8 blur-3xl" />
-          <div className="absolute -bottom-10 left-1/3 size-56 rounded-full bg-indigo-500/6 blur-3xl" />
-          <div className="absolute top-0 left-0 size-40 rounded-full bg-violet-500/5 blur-2xl" />
+          <div
+            className="absolute -right-20 -top-24 size-80 animate-aurora rounded-full opacity-50 blur-[100px]"
+            style={{ background: "radial-gradient(circle, oklch(0.78 0.16 184 / 0.45), transparent 70%)" }}
+          />
+          <div
+            className="absolute -bottom-16 left-1/4 size-64 animate-aurora rounded-full opacity-35 blur-[100px]"
+            style={{
+              background: "radial-gradient(circle, oklch(0.7 0.22 350 / 0.4), transparent 70%)",
+              animationDelay: "-7s",
+            }}
+          />
+          <div
+            className="absolute -left-10 top-1/2 size-52 animate-aurora rounded-full opacity-25 blur-[80px]"
+            style={{
+              background: "radial-gradient(circle, oklch(0.66 0.2 295 / 0.4), transparent 70%)",
+              animationDelay: "-12s",
+            }}
+          />
         </div>
 
-        {/* top accent */}
+        {/* top gradient accent */}
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
-        <div className="absolute inset-x-0 top-1 h-[1px] bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
+        <div className="absolute inset-x-0 top-1 h-[1px] bg-gradient-to-r from-transparent via-fuchsia-500/30 to-transparent" />
 
         <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
             {/* avatar */}
             <div className="relative">
-              <div className="size-16 overflow-hidden rounded-2xl ring-2 ring-primary/30 ring-offset-2 ring-offset-[#0d1420] shadow-xl sm:size-20">
+              <div className="aurora-border size-16 overflow-hidden rounded-2xl ring-2 ring-primary/30 ring-offset-2 ring-offset-background shadow-pop sm:size-20">
+                <span className="aurora-border-ring" />
                 {agent?.profile_picture_url ? (
                   <SecureImage
                     path={agent.profile_picture_url}
@@ -278,31 +298,34 @@ function AgentDashboard() {
                     className="size-full object-cover"
                   />
                 ) : (
-                  <div className="flex size-full items-center justify-center bg-gradient-to-br from-primary/30 to-indigo-500/20">
+                  <div className="flex size-full items-center justify-center bg-gradient-to-br from-primary/30 via-cyan-500/20 to-fuchsia-500/20">
                     <span className="text-2xl font-bold text-primary/90">
                       {initials(profile?.full_name ?? profile?.email)}
                     </span>
                   </div>
                 )}
               </div>
-              <span className="absolute -bottom-1 -right-1 flex size-4 items-center justify-center rounded-full border-2 border-[#0d1420] bg-emerald-500">
-                <span className="size-1.5 animate-pulse rounded-full bg-white/80" />
+              <span className="absolute -bottom-1 -right-1 flex size-5 items-center justify-center rounded-full border-2 border-background bg-success">
+                <span className="relative flex size-2">
+                  <span className="absolute inline-flex h-full w-full animate-status-ping rounded-full bg-success opacity-75" />
+                  <span className="relative inline-flex size-2 rounded-full bg-background" />
+                </span>
               </span>
             </div>
 
             <div>
-              <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground/70">
-                <GreetIcon className="size-3.5" />
+              <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground/80">
+                <GreetIcon className="size-3.5 text-primary" />
                 {greeting.label}
               </p>
-              <h1 className="mt-0.5 bg-gradient-to-r from-white via-white/90 to-white/60 bg-clip-text text-2xl font-extrabold tracking-tight text-transparent sm:text-3xl">
-                {profile?.full_name?.split(" ")[0] ?? "Agent"}
+              <h1 className="font-display mt-0.5 text-2xl font-bold tracking-tight sm:text-3xl">
+                <span className="text-gradient-aurora">{profile?.full_name?.split(" ")[0] ?? "Agent"}</span>
               </h1>
               {agent && (
-                <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-white/40">
+                <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground/70">
                   <span className="flex items-center gap-1">
                     <Hash className="size-3 text-primary/60" />
-                    {agent.employee_id}
+                    <span className="font-mono">{agent.employee_id}</span>
                   </span>
                   {agent.designations?.name && (
                     <span className="flex items-center gap-1">
@@ -322,9 +345,10 @@ function AgentDashboard() {
           </div>
 
           {/* date badge */}
-          <div className="flex shrink-0 flex-col items-start rounded-2xl border border-white/8 bg-white/3 px-4 py-3 sm:items-end">
-            <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60">Today</p>
-            <p className="mt-0.5 text-sm font-semibold text-foreground/80">
+          <div className="aurora-border flex shrink-0 flex-col items-start rounded-2xl bg-background/40 px-4 py-3 backdrop-blur-sm sm:items-end">
+            <span className="aurora-border-ring" />
+            <p className="relative text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">Today</p>
+            <p className="relative mt-0.5 font-mono text-sm font-semibold tabular-nums text-foreground/90">
               {new Date().toLocaleDateString("en-PK", {
                 weekday: "long",
                 day: "numeric",
@@ -924,45 +948,64 @@ function StaffDashboard() {
   return (
     <div className="space-y-5">
       {/* ── HERO HEADER ──────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-3xl border border-white/8 bg-gradient-to-br from-[#0d1420] via-[#0f1827] to-[#090e18] p-5 sm:p-7 shadow-2xl shadow-black/40 animate-rise">
+      <div className="aurora-border glass-strong animate-rise relative overflow-hidden rounded-3xl p-5 sm:p-7">
+        <span className="aurora-border-ring" />
         <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -right-20 -top-20 size-72 rounded-full bg-primary/8 blur-3xl" />
-          <div className="absolute -bottom-10 left-1/3 size-56 rounded-full bg-indigo-500/6 blur-3xl" />
-          <div className="absolute top-0 left-0 size-40 rounded-full bg-violet-500/5 blur-2xl" />
+          <div
+            className="absolute -right-20 -top-24 size-80 animate-aurora rounded-full opacity-50 blur-[100px]"
+            style={{ background: "radial-gradient(circle, oklch(0.78 0.16 184 / 0.45), transparent 70%)" }}
+          />
+          <div
+            className="absolute -bottom-16 left-1/4 size-64 animate-aurora rounded-full opacity-35 blur-[100px]"
+            style={{
+              background: "radial-gradient(circle, oklch(0.7 0.22 350 / 0.4), transparent 70%)",
+              animationDelay: "-7s",
+            }}
+          />
+          <div
+            className="absolute -left-10 top-1/2 size-52 animate-aurora rounded-full opacity-25 blur-[80px]"
+            style={{
+              background: "radial-gradient(circle, oklch(0.66 0.2 295 / 0.4), transparent 70%)",
+              animationDelay: "-12s",
+            }}
+          />
         </div>
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
+        <div className="absolute inset-x-0 top-1 h-[1px] bg-gradient-to-r from-transparent via-fuchsia-500/30 to-transparent" />
 
         <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="grid size-11 place-items-center rounded-2xl bg-primary/15 ring-1 ring-primary/30">
-              <Sparkles className="size-5 text-primary" />
+            <div className="aurora-border relative grid size-11 place-items-center rounded-2xl bg-primary/15 ring-1 ring-primary/30">
+              <span className="aurora-border-ring" />
+              <Sparkles className="relative size-5 text-primary" strokeWidth={2.2} />
             </div>
             <div>
-              <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground/70">
-                <Activity className="size-3.5" /> Live snapshot
+              <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground/80">
+                <Activity className="size-3.5 text-primary" /> Live snapshot
               </p>
-              <h1 className="mt-0.5 bg-gradient-to-r from-white via-white/90 to-white/60 bg-clip-text text-xl font-extrabold tracking-tight text-transparent sm:text-2xl">
-                Welcome back, {profile?.full_name?.split(" ")[0] ?? "there"}
+              <h1 className="font-display mt-0.5 text-xl font-bold tracking-tight sm:text-2xl">
+                <span className="text-gradient-aurora">Welcome back, {profile?.full_name?.split(" ")[0] ?? "there"}</span>
               </h1>
-              <p className="mt-0.5 text-xs text-white/40">
+              <p className="mt-0.5 text-xs text-muted-foreground/70">
                 {new Date().toLocaleDateString("en-PK", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
               </p>
             </div>
           </div>
 
           {/* attendance rate ring */}
-          <div className="flex items-center gap-4 rounded-2xl border border-white/8 bg-white/3 px-4 py-3">
+          <div className="aurora-border flex items-center gap-4 rounded-2xl bg-background/40 px-4 py-3 backdrop-blur-sm">
+            <span className="aurora-border-ring" />
             <DonutChart
               segments={[
-                { value: attendanceRate, color: "oklch(0.72 0.16 155)", label: "Present" },
+                { value: attendanceRate, color: "oklch(0.78 0.16 184)", label: "Present" },
                 { value: 100 - attendanceRate, color: "oklch(1 0 0 / 0.08)", label: "Rest" },
               ]}
               size={64}
               stroke={7}
             />
-            <div>
-              <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60">Attendance Rate</p>
-              <p className="font-mono text-2xl font-extrabold tabular-nums text-emerald-400">
+            <div className="relative">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">Attendance Rate</p>
+              <p className="font-mono text-2xl font-bold tabular-nums text-primary">
                 {attendanceRate}<span className="text-sm text-muted-foreground/60">%</span>
               </p>
               <p className="text-[10px] text-muted-foreground/60">{count("present")} of {totalAgents} today</p>

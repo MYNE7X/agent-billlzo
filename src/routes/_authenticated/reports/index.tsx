@@ -530,47 +530,60 @@ function HeroHeader({
   profileName: string;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-white/8 bg-gradient-to-br from-[#0d1420] via-[#0f1827] to-[#090e18] p-6 sm:p-8 shadow-2xl shadow-black/40 animate-rise">
+    <div className="aurora-border glass-strong animate-rise relative overflow-hidden rounded-3xl p-6 sm:p-8">
+      <span className="aurora-border-ring" />
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute -right-20 -top-20 size-72 rounded-full bg-primary/8 blur-3xl" />
-        <div className="absolute -bottom-10 left-1/3 size-56 rounded-full bg-indigo-500/6 blur-3xl" />
+        <div
+          className="absolute -right-20 -top-24 size-80 animate-aurora rounded-full opacity-50 blur-[100px]"
+          style={{ background: "radial-gradient(circle, oklch(0.78 0.16 184 / 0.45), transparent 70%)" }}
+        />
+        <div
+          className="absolute -bottom-16 left-1/4 size-64 animate-aurora rounded-full opacity-35 blur-[100px]"
+          style={{
+            background: "radial-gradient(circle, oklch(0.7 0.22 350 / 0.4), transparent 70%)",
+            animationDelay: "-7s",
+          }}
+        />
       </div>
       <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
+      <div className="absolute inset-x-0 top-1 h-[1px] bg-gradient-to-r from-transparent via-fuchsia-500/30 to-transparent" />
 
       <div className="relative flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-4">
           <div className="relative">
-            <div className="size-16 overflow-hidden rounded-2xl ring-2 ring-primary/30 ring-offset-2 ring-offset-[#0d1420] sm:size-20">
+            <div className="aurora-border size-16 overflow-hidden rounded-2xl ring-2 ring-primary/30 ring-offset-2 ring-offset-background sm:size-20">
+              <span className="aurora-border-ring" />
               {agent.profile_picture_url ? (
                 <SecureImage path={agent.profile_picture_url} alt={agent.full_name} className="size-full object-cover" />
               ) : (
-                <div className="flex size-full items-center justify-center bg-gradient-to-br from-primary/30 to-indigo-500/20">
+                <div className="flex size-full items-center justify-center bg-gradient-to-br from-primary/30 via-cyan-500/20 to-fuchsia-500/20">
                   <span className="text-2xl font-bold text-primary/90">{initials(profileName)}</span>
                 </div>
               )}
             </div>
-            <span className="absolute -bottom-1 -right-1 grid size-6 place-items-center rounded-full border-2 border-[#0d1420] bg-primary">
-              <BarChart3 className="size-3.5 text-background" />
+            <span className="absolute -bottom-1 -right-1 grid size-6 place-items-center rounded-full border-2 border-background bg-gradient-to-br from-primary to-fuchsia-500">
+              <BarChart3 className="size-3.5 text-background" strokeWidth={2.4} />
             </span>
           </div>
           <div>
-            <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground/70">
-              <Sparkles className="size-3.5" /> Performance Reports
+            <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground/80">
+              <Sparkles className="size-3.5 text-primary" /> Performance Reports
             </p>
-            <h1 className="mt-0.5 bg-gradient-to-r from-white via-white/90 to-white/60 bg-clip-text text-2xl font-extrabold tracking-tight text-transparent sm:text-3xl">
-              {profileName.split(" ")[0]}'s Report Card
+            <h1 className="font-display mt-0.5 text-2xl font-bold tracking-tight sm:text-3xl">
+              <span className="text-gradient-aurora">{profileName.split(" ")[0]}'s Report Card</span>
             </h1>
-            <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-white/40">
-              <span>{agent.employee_id}</span>
+            <p className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground/70">
+              <span className="font-mono">{agent.employee_id}</span>
               {agent.designations?.name && <span>· {agent.designations.name}</span>}
               {agent.departments?.name && <span>· {agent.departments.name}</span>}
             </p>
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-col items-start rounded-2xl border border-white/8 bg-white/3 px-4 py-3 sm:items-end">
-          <p className="text-[10px] uppercase tracking-widest text-muted-foreground/60">Last Updated</p>
-          <p className="mt-0.5 text-sm font-semibold text-foreground/80">
+        <div className="aurora-border flex shrink-0 flex-col items-start rounded-2xl bg-background/40 px-4 py-3 backdrop-blur-sm sm:items-end">
+          <span className="aurora-border-ring" />
+          <p className="relative text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/70">Last Updated</p>
+          <p className="relative mt-0.5 font-mono text-sm font-semibold tabular-nums text-foreground/90">
             {new Date().toLocaleDateString("en-PK", { weekday: "long", day: "numeric", month: "short" })}
           </p>
         </div>
