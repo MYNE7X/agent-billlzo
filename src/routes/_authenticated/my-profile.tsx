@@ -647,9 +647,9 @@ function NotLinked({ name }: { name?: string | null }) {
 
 function StatPill({ value, label }: { value: React.ReactNode; label: string }) {
   return (
-    <div className="flex flex-col items-center">
-      <span className="font-mono text-base font-bold tabular-nums sm:text-lg">{value}</span>
-      <span className="text-[10px] uppercase tracking-wider text-muted-foreground/70">{label}</span>
+    <div className="flex flex-col items-center text-center">
+      <span className="font-mono text-sm font-bold tabular-nums sm:text-lg">{value}</span>
+      <span className="text-[9px] uppercase tracking-wider text-muted-foreground/70 sm:text-[10px]">{label}</span>
     </div>
   );
 }
@@ -730,6 +730,11 @@ function MyProfilePage() {
     }
   }
 
+  // ── Auto-hide Uploads tab when DP + CNIC front + CNIC back are all uploaded ──
+  const allUploadsDone = Boolean(
+    agent.profile_picture_url && agent.cnic_front_url && agent.cnic_back_url,
+  );
+
   return (
     <div className="mx-auto max-w-3xl animate-rise">
 
@@ -783,9 +788,9 @@ function MyProfilePage() {
         </div>
 
         {/* avatar (story-ring) + identity */}
-        <div className="relative px-5 pb-5">
+        <div className="relative px-4 pb-4 sm:px-5 sm:pb-5">
           {/* avatar overlapping cover */}
-          <div className="-mt-14 flex items-end justify-between sm:-mt-16">
+          <div className="-mt-12 flex items-end justify-between sm:-mt-16">
             <div className="relative">
               {/* story ring */}
               <div
@@ -796,19 +801,19 @@ function MyProfilePage() {
                 }}
               >
                 <div className="rounded-full bg-background p-[3px]">
-                  <div className="size-20 overflow-hidden rounded-full ring-1 ring-border/40 sm:size-24">
+                  <div className="size-16 overflow-hidden rounded-full ring-1 ring-border/40 sm:size-24">
                     {agent.profile_picture_url ? (
                       <SecureImage path={agent.profile_picture_url} alt={agent.full_name} className="size-full object-cover" />
                     ) : (
                       <div className="flex size-full items-center justify-center bg-gradient-to-br from-primary/30 to-indigo-500/20">
-                        <span className="text-2xl font-bold text-primary/90">{initials(agent.full_name)}</span>
+                        <span className="text-xl font-bold text-primary/90 sm:text-2xl">{initials(agent.full_name)}</span>
                       </div>
                     )}
                   </div>
                 </div>
               </div>
               {/* online dot */}
-              <span className="absolute bottom-1 right-1 flex size-4 items-center justify-center rounded-full border-2 border-background bg-emerald-500 shadow-md">
+              <span className="absolute bottom-0 right-0 flex size-4 items-center justify-center rounded-full border-2 border-background bg-emerald-500 shadow-md">
                 <span className="size-1.5 animate-pulse rounded-full bg-white/80" />
               </span>
             </div>
@@ -817,7 +822,8 @@ function MyProfilePage() {
             <div className="mb-1 flex items-center gap-2">
               <Button asChild size="sm" variant="outline" className="rounded-full border-primary/30 bg-primary/10 text-primary hover:bg-primary/20">
                 <Link to="/reports">
-                  <BarChart3 className="size-3.5" /> View Reports
+                  <BarChart3 className="size-3.5" />
+                  <span className="hidden sm:inline">View Reports</span>
                 </Link>
               </Button>
             </div>
@@ -825,7 +831,7 @@ function MyProfilePage() {
 
           {/* name + verified tick */}
           <div className="mt-3 flex items-center gap-1.5">
-            <h1 className="bg-gradient-to-r from-foreground via-foreground/90 to-foreground/60 bg-clip-text text-xl font-extrabold tracking-tight text-transparent sm:text-2xl">
+            <h1 className="bg-gradient-to-r from-foreground via-foreground/90 to-foreground/60 bg-clip-text text-lg font-extrabold tracking-tight text-transparent sm:text-2xl">
               {agent.full_name}
             </h1>
             <span className="grid size-5 place-items-center rounded-full bg-gradient-to-br from-sky-400 to-blue-500 shadow-sm">
@@ -834,7 +840,7 @@ function MyProfilePage() {
           </div>
 
           {/* subtitle */}
-          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground sm:text-sm">
             {desig && <span className="font-medium text-foreground/80">{desig}</span>}
             {dept && (
               <>
@@ -845,24 +851,21 @@ function MyProfilePage() {
           </p>
 
           {/* ID chips */}
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 font-mono text-[11px] text-muted-foreground">
-              <Hash className="size-3 text-primary/70" />{agent.employee_id}
+          <div className="mt-2.5 flex flex-wrap items-center gap-1.5 sm:gap-2">
+            <span className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 font-mono text-[10px] text-muted-foreground sm:px-2.5 sm:text-[11px]">
+              <Hash className="size-2.5 text-primary/70 sm:size-3" />{agent.employee_id}
             </span>
-            <span className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-1 font-mono text-[11px] text-muted-foreground">
-              <Hash className="size-3 text-primary/70" />{agent.reference_id}
+            <span className="flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 font-mono text-[10px] text-muted-foreground sm:px-2.5 sm:text-[11px]">
+              <Hash className="size-2.5 text-primary/70 sm:size-3" />{agent.reference_id}
             </span>
             <StatusBadge value={agent.status} />
           </div>
 
           {/* stats strip — TikTok followers/following/likes */}
-          <div className="mt-4 flex items-center justify-around rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-3">
+          <div className="mt-3 grid grid-cols-4 gap-1 rounded-2xl border border-white/8 bg-white/[0.03] px-2 py-2.5 sm:flex sm:items-center sm:justify-around sm:px-3 sm:py-3">
             <StatPill value={agent.joining_date ? new Date(agent.joining_date).getFullYear() : "—"} label="Joined" />
-            <span className="h-8 w-px bg-border/30" />
-            <StatPill value={daysPresent} label="Days Present" />
-            <span className="h-8 w-px bg-border/30" />
-            <StatPill value={`${totalHours.toFixed(0)}h`} label="Total Hours" />
-            <span className="h-8 w-px bg-border/30" />
+            <StatPill value={daysPresent} label="Present" />
+            <StatPill value={`${totalHours.toFixed(0)}h`} label="Hours" />
             <StatPill
               value={lastReport ? lastReport.overall_score.toFixed(0) : "—"}
               label="Score"
@@ -901,13 +904,10 @@ function MyProfilePage() {
             <TabsList className="flex w-max min-w-full gap-1.5 rounded-2xl border border-border/40 bg-card/80 p-1.5 backdrop-blur-lg">
               {[
                 { v: "personal", label: "Personal", icon: User },
-                { v: "employment", label: "Work", icon: Briefcase },
-                { v: "uploads", label: "Uploads", icon: Upload },
+                ...(!allUploadsDone ? [{ v: "uploads", label: "Uploads", icon: Upload }] : []),
                 { v: "attendance", label: "Attendance", icon: Calendar },
-                { v: "sales", label: "Sales", icon: TrendingUp },
                 { v: "salary", label: "Salary", icon: Wallet },
                 { v: "reports", label: "Reports", icon: BarChart3 },
-                { v: "documents", label: "Documents", icon: FileText },
               ].map((t) => (
                 <TabsTrigger
                   key={t.v}
@@ -950,33 +950,8 @@ function MyProfilePage() {
           </div>
         </TabsContent>
 
-        {/* EMPLOYMENT */}
-        <TabsContent value="employment" className="glass rounded-2xl p-5 space-y-5">
-          <SectionTitle icon={Briefcase}>Employment Details</SectionTitle>
-          <div className="grid gap-2.5 sm:grid-cols-2">
-            <InfoRow icon={Building2} label="Department" value={dept} />
-            <InfoRow icon={Briefcase} label="Designation" value={desig} />
-            <InfoRow icon={Building2} label="Office" value={officesMap.get(agent.office_id ?? "")?.office_name ?? null} />
-            <InfoRow icon={Calendar} label="Joining Date" value={formatDate(agent.joining_date)} />
-            <InfoRow icon={Briefcase} label="Employee Type" value={labelize(agent.employee_type)} />
-            <InfoRow icon={Clock} label="Shift Timing" value={agent.shift_timing} />
-            <InfoRow icon={Star} label="Status" value={labelize(agent.status)} />
-          </div>
-
-          <SectionTitle icon={GraduationCap}>Education & Skills</SectionTitle>
-          <div className="grid gap-2.5 sm:grid-cols-2">
-            <InfoRow icon={GraduationCap} label="Qualification" value={agent.highest_qualification} />
-            <InfoRow icon={GraduationCap} label="Degree" value={agent.degree} />
-            <InfoRow icon={GraduationCap} label="Institute" value={agent.institute_name} />
-            <InfoRow icon={Star} label="Certifications" value={agent.certifications} />
-            <InfoRow icon={Languages} label="Languages" value={agent.languages} />
-            <InfoRow icon={Star} label="Skills" value={agent.skills} />
-            <InfoRow icon={Briefcase} label="Previous Company" value={agent.previous_company} />
-            <InfoRow icon={FileText} label="Experience Summary" value={agent.previous_experience} />
-          </div>
-        </TabsContent>
-
-        {/* MY UPLOADS */}
+        {/* MY UPLOADS — hidden once all uploads are done */}
+        {!allUploadsDone && (
         <TabsContent value="uploads" className="glass rounded-2xl p-5 space-y-5">
           <SectionTitle icon={Upload}>Profile Picture (DP)</SectionTitle>
           <div className="space-y-2">
@@ -1031,15 +1006,11 @@ function MyProfilePage() {
             Once uploaded, CNIC images are locked. Contact your admin to make any changes.
           </p>
         </TabsContent>
+        )}
 
         {/* ATTENDANCE */}
         <TabsContent value="attendance" className="glass rounded-2xl p-5">
           <AttendanceTab agent={agent} />
-        </TabsContent>
-
-        {/* MY SALES */}
-        <TabsContent value="sales" className="glass rounded-2xl p-5">
-          <MySalesTab agentId={agent.id} />
         </TabsContent>
 
         {/* SALARY */}
@@ -1050,11 +1021,6 @@ function MyProfilePage() {
         {/* REPORTS */}
         <TabsContent value="reports" className="glass rounded-2xl p-5">
           <ReportsTab agentId={agent.id} />
-        </TabsContent>
-
-        {/* DOCUMENTS */}
-        <TabsContent value="documents" className="glass rounded-2xl p-5">
-          <DocumentsTab agentId={agent.id} />
         </TabsContent>
       </Tabs>
     </div>
