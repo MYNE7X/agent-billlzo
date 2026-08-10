@@ -1,7 +1,7 @@
 import { createFileRoute, useParams } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { Trash2, Lock, Unlock, Pencil, Check, X } from "lucide-react";
 
 import { AgentForm } from "@/components/agents/AgentForm";
 import { DocumentManager } from "@/components/agents/DocumentManager";
@@ -13,12 +13,14 @@ import { SetPasswordPanel } from "@/components/agents/SetPasswordPanel";
 import { StatusBadge } from "@/components/billzo/StatusBadge";
 import { SecureImage } from "@/components/billzo/SecureImage";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useAgent, useSaveAgent, logEdit } from "@/lib/queries";
+import { useAgent, useSaveAgent, useToggleEmployeeIdLock, logEdit } from "@/lib/queries";
 import { removeAgentFile } from "@/lib/storage";
 import { useAuth } from "@/hooks/useAuth";
 import { initials } from "@/lib/billzo";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/agents/$agentId")({
   component: AgentDetail,
@@ -29,7 +31,10 @@ function AgentDetail() {
   const { user, isStaff, isSuperAdmin } = useAuth();
   const { data: agent, isLoading, refetch } = useAgent(agentId);
   const save = useSaveAgent();
+  const toggleLock = useToggleEmployeeIdLock();
   const [deletingPic, setDeletingPic] = useState(false);
+  const [editingEmpId, setEditingEmpId] = useState(false);
+  const [empIdValue, setEmpIdValue] = useState("");
 
   async function handleDeleteProfilePic() {
     if (!agent?.profile_picture_url) return;
@@ -95,9 +100,84 @@ function AgentDetail() {
         <div>
           <h1 className="text-2xl font-semibold sm:text-3xl">{agent.full_name}</h1>
           <div className="mt-1 flex flex-wrap items-center gap-2">
-            <span className="font-mono text-xs text-muted-foreground">
-              {agent.employee_id} · {agent.reference_id}
-            </span>
+            {/* Editable Employee ID */}
+            {editingEmpId ? (
+              <div className="flex items-center gap-1">
+                <Input
+                  value={empIdValue}
+                  onChange={(e) => setEmpIdValue(e.target.value)}
+                  className="h-7 w-32 font-mono text-xs"
+                  autoFocus
+                />
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="size-7 text-emerald-400 hover:bg-emerald-500/15"
+                  onClick={async () => {
+                    try {
+                      await save.mutateAsync({ id: agentId, values: { employee_id: empIdValue } as never });
+                      toast.success("Employee ID updated");
+                      setEditingEmpId(false);
+                      void refetch();
+                    } catch (e) {
+                      toast.error(e instanceof Error ? e.message : "Could not update Employee ID");
+                    }
+                  }}
+                >
+                  <Check className="size-3.5" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="size-7 text-muted-foreground hover:bg-secondary"
+                  onClick={() => setEditingEmpId(false)}
+                >
+                  <X className="size-3.5" />
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-1">
+                <span className="font-mono text-xs text-muted-foreground">
+                  {agent.employee_id} · {agent.reference_id}
+                </span>
+                {/* Edit button — staff can edit when unlocked, super_admin can always toggle lock */}
+                {isStaff && !agent.employee_id_locked && (
+                  <button
+                    onClick={() => {
+                      setEmpIdValue(agent.employee_id);
+                      setEditingEmpId(true);
+                    }}
+                    className="grid size-5 place-items-center rounded text-muted-foreground/40 transition-colors hover:bg-primary/15 hover:text-primary"
+                    title="Edit Employee ID"
+                  >
+                    <Pencil className="size-3" />
+                  </button>
+                )}
+                {/* Lock indicator + toggle (super_admin only) */}
+                {isSuperAdmin && (
+                  <button
+                    onClick={async () => {
+                      try {
+                        await toggleLock.mutateAsync({ agentId, locked: !agent.employee_id_locked });
+                        toast.success(agent.employee_id_locked ? "Employee ID unlocked" : "Employee ID locked");
+                        void refetch();
+                      } catch (e) {
+                        toast.error(e instanceof Error ? e.message : "Could not toggle lock");
+                      }
+                    }}
+                    className={cn(
+                      "grid size-5 place-items-center rounded transition-colors",
+                      agent.employee_id_locked
+                        ? "text-amber-400 hover:bg-amber-500/15"
+                        : "text-muted-foreground/30 hover:bg-secondary",
+                    )}
+                    title={agent.employee_id_locked ? "Locked — click to unlock (Super Admin)" : "Unlocked — click to lock"}
+                  >
+                    {agent.employee_id_locked ? <Lock className="size-3" /> : <Unlock className="size-3" />}
+                  </button>
+                )}
+              </div>
+            )}
             <StatusBadge value={agent.status} />
           </div>
         </div>
