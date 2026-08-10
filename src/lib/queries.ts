@@ -57,6 +57,7 @@ export function useAgents() {
       if (error) throw error;
       return (data ?? []) as unknown as AgentWithRefs[];
     },
+    staleTime: 2 * 60 * 1000,
   });
 }
 
@@ -73,6 +74,9 @@ export function useAgent(id: string) {
       return (data ?? null) as unknown as AgentWithRefs | null;
     },
     enabled: Boolean(id),
+    // Keep cached data for 5 minutes — prevents refetch on every navigation
+    staleTime: 5 * 60 * 1000,
+    // Keep previous data while refetching (no flash of empty content)
   });
 }
 
@@ -90,6 +94,7 @@ export function useMyAgent(userId?: string | null) {
       return (data ?? null) as unknown as AgentWithRefs | null;
     },
     enabled: Boolean(userId),
+    staleTime: 3 * 60 * 1000,
   });
 }
 
@@ -175,6 +180,7 @@ export function useAttendance(date: string) {
       if (error) throw error;
       return (data ?? []) as unknown as AttendanceRow[];
     },
+    staleTime: 30 * 1000,
   });
 }
 
