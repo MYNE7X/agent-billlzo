@@ -39,6 +39,7 @@ import {
   Wallet,
   PieChart,
   Inbox,
+  Building2,
 } from "lucide-react";
 
 import { StatCard } from "@/components/billzo/StatCard";
@@ -51,6 +52,7 @@ import {
   useNetworkSettings, useLogAttendanceViolation,
   useAllReports, useExpenses, useAttendanceViolations,
   usePendingRequestCount,
+  useOfficesMap,
 } from "@/lib/queries";
 import { formatDate, formatPKR, formatTime, hoursLabel, todayISO, initials, labelize } from "@/lib/billzo";
 import { useAuth } from "@/hooks/useAuth";
@@ -847,7 +849,7 @@ function MiniBar({
     <div className="w-full overflow-hidden rounded-full" style={{ height, background: track }}>
       <div
         className="h-full rounded-full transition-all duration-700"
-        style={{ width: `${pct}%`, background: `linear-gradient(90deg, ${color}, ${color}cc)` }}
+        style={{ width: `${pct}%`, background: color }}
       />
     </div>
   );
@@ -924,6 +926,7 @@ function StaffDashboard() {
   const { profile } = useAuth();
   const today = todayISO();
   const { data: agents = [] } = useAgents();
+  const officesMap = useOfficesMap();
   const { data: attendance } = useAttendance(today);
 
   // last 7 days for the trend area chart
@@ -1205,6 +1208,7 @@ function StaffDashboard() {
                   r.overall_score >= 70 ? "oklch(0.7 0.13 235)" :
                   r.overall_score >= 50 ? "oklch(0.79 0.15 78)" :
                   "oklch(0.63 0.2 22)";
+                const officeName = officesMap.get(r.agents?.office_id ?? "")?.office_name;
                 return (
                   <li
                     key={r.id}
@@ -1230,16 +1234,25 @@ function StaffDashboard() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-xs font-medium">{r.agents?.full_name ?? "—"}</p>
-                      <p className="text-[10px] text-muted-foreground/60">
-                        {new Date(r.month).toLocaleDateString("en-PK", { month: "short", year: "numeric" })}
-                      </p>
+                      <div className="mt-0.5 flex items-center gap-1.5 text-[10px] text-muted-foreground/60">
+                        {officeName && (
+                          <span className="flex items-center gap-0.5 truncate text-primary/60">
+                            <Building2 className="size-2.5" />{officeName}
+                          </span>
+                        )}
+                        <span className="text-muted-foreground/40">·</span>
+                        <span>{new Date(r.month).toLocaleDateString("en-PK", { month: "short", year: "numeric" })}</span>
+                      </div>
                     </div>
-                    <div className="w-16 shrink-0">
-                      <MiniBar value={r.overall_score} max={maxScore} color={tone} height={5} />
+                    {/* Progress bar + score */}
+                    <div className="flex shrink-0 items-center gap-2">
+                      <div className="w-20">
+                        <MiniBar value={r.overall_score} max={maxScore} color={tone} height={5} />
+                      </div>
+                      <span className="w-14 text-right font-mono text-sm font-bold tabular-nums" style={{ color: tone }}>
+                        {r.overall_score.toFixed(0)}<span className="text-[10px] text-muted-foreground/50">/100</span>
+                      </span>
                     </div>
-                    <span className="w-10 shrink-0 text-right font-mono text-sm font-bold tabular-nums" style={{ color: tone }}>
-                      {r.overall_score.toFixed(0)}
-                    </span>
                   </li>
                 );
               })}

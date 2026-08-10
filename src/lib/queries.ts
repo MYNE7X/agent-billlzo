@@ -860,13 +860,14 @@ export type MonthlyReportWithAgent = MonthlyReport & {
     employee_id: string;
     profile_picture_url: string | null;
     department_id: string | null;
+    office_id: string | null;
     departments: { name: string } | null;
     designations: { name: string } | null;
   } | null;
 };
 
 const REPORT_SELECT =
-  "*, agents:agent_id(id, full_name, employee_id, profile_picture_url, department_id, departments:department_id(name), designations:designation_id(name))";
+  "*, agents:agent_id(id, full_name, employee_id, profile_picture_url, department_id, office_id, departments:department_id(name), designations:designation_id(name))";
 
 /** All monthly reports for a single agent (used by the agent's own Reports page). */
 export function useAgentReports(agentId?: string) {

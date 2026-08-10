@@ -60,12 +60,14 @@ function SidebarNav({
   items,
   primaryRole,
   profile,
+  isStaff,
   onNavigate,
   onSignOut,
 }: {
   items: NavItem[];
   primaryRole: "super_admin" | "admin" | "agent";
   profile: { full_name: string | null; email: string | null; avatar_url: string | null } | null;
+  isStaff?: boolean;
   onNavigate?: () => void;
   onSignOut: () => void;
 }) {
@@ -140,33 +142,34 @@ function SidebarNav({
         </div>
       </nav>
 
-      {/* Creator signature */}
-      <CreatorBadge />
+      {/* Creator signature — hidden for admin/super_admin (they don't need it) */}
+      {!isStaff && <CreatorBadge />}
 
       {/* Account card */}
-      <div className="aurora-border relative overflow-hidden rounded-2xl border border-border/50 bg-secondary/30 p-3">
+      <div className="aurora-border relative overflow-hidden rounded-2xl border border-border/50 bg-secondary/30 p-2.5">
         <span className="aurora-border-ring" />
-        <div className="relative flex items-center gap-3">
-          <Avatar className="size-9 ring-2 ring-primary/30 ring-offset-1 ring-offset-background">
-            <AvatarFallback className="bg-gradient-to-br from-primary/30 to-fuchsia-500/20 text-xs font-bold text-primary">
+        <div className="relative flex items-center gap-2.5">
+          <Avatar className="size-8 shrink-0 ring-2 ring-primary/30 ring-offset-1 ring-offset-background">
+            <AvatarFallback className="bg-gradient-to-br from-primary/30 to-fuchsia-500/20 text-[10px] font-bold text-primary">
               {initials(profile?.full_name ?? profile?.email)}
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-semibold">{profile?.full_name ?? "User"}</p>
-            <p className="truncate text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70">
+            <p className="truncate text-xs font-semibold">{profile?.full_name ?? "User"}</p>
+            <p className="truncate text-[9px] font-medium uppercase tracking-wider text-muted-foreground/70">
               {labelize(primaryRole)}
             </p>
           </div>
+          {/* Compact logout button — icon only, fits inline */}
+          <button
+            onClick={onSignOut}
+            className="grid size-7 shrink-0 place-items-center rounded-lg text-muted-foreground/50 transition-colors hover:bg-destructive/15 hover:text-destructive"
+            aria-label="Sign out"
+            title="Sign out"
+          >
+            <LogOut className="size-3.5" />
+          </button>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="relative mt-2 w-full justify-start text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
-          onClick={onSignOut}
-        >
-          <LogOut className="size-3.5" /> Sign out
-        </Button>
       </div>
     </div>
   );
@@ -284,6 +287,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           items={items}
           primaryRole={primaryRole}
           profile={profile}
+          isStaff={isStaff}
           onSignOut={handleSignOut}
         />
       </aside>
@@ -349,6 +353,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               items={items}
               primaryRole={primaryRole}
               profile={profile}
+              isStaff={isStaff}
               onNavigate={() => setSheetOpen(false)}
               onSignOut={handleSignOut}
             />
